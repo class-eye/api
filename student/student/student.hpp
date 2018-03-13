@@ -77,12 +77,13 @@ public:
 		    const string& hands_net, const string& hands_model, 
 		    const string& front_face_net, const string& front_face_model, 
 			const string& face_feature_net, const string& face_feature_model, int gpu_device = -1);
-	
-	int GetStandaredFeats(Mat &frame, string &output, int &max_student_num);
+	~Student_analy();
+	int GetStandaredFeats(Mat &frame_1080, string &output, int &max_student_num, Rect &box, int add = 0);
 	std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>student_detect(jfda::JfdaDetector &detector, Mat &image, string &output, int &max_student_num);
-	void good_face(jfda::JfdaDetector &detector, Mat &image_1080, int &max_student_num);
+	void good_face(jfda::JfdaDetector &detector, Mat &image_1080, int &max_student_num, Rect &box, int add = 0);
 	void face_match(jfda::JfdaDetector &detector, Mat &image_1080);
 	void init();
+	void clear();
 
 private:
 	vector<vector<Student_Info>>students_all;
@@ -99,7 +100,6 @@ private:
 	Net *facefeature_net;
 
 	
-
 };
 
 

@@ -71,13 +71,14 @@ int main(){
 	
 	string imgdir = "/home/liaowang/student_api/input_test/";
 	string output = "/home/liaowang/api_student_class/output2";
+	Rect box(0, 0, 0, 0);
 
 #if 1
 	vector<string>imagelist = fs::ListDir(imgdir, { "jpg" });
 	if (!fs::IsExists(output)){
 		fs::MakeDir(output);
 	}
-	int a = 0;
+	int behavior_yes_or_no = 0;
 	for (int i = 640; i < imagelist.size(); i++){
 
 		string imagep = imgdir + imagelist[i];
@@ -85,11 +86,8 @@ int main(){
 		//if (i < 20){
 		PoseInfo pose1;
 		cout << "processing: " << i << endl;
-		
-		if (a != 1){
-			a = student.GetStandaredFeats(image, output, max_student_num);
-			
-			cout << a << endl;
+		if (behavior_yes_or_no != 1){
+			behavior_yes_or_no = student.GetStandaredFeats(image, output, max_student_num,box,0);
 		}
 		else{
 			cout << "n1 Finish" << endl;
@@ -100,8 +98,11 @@ int main(){
 	for (int i = 0; i < imagelist.size(); i++){
 		string imagep = imgdir + imagelist[i];
 		Mat image = imread(imagep);
-		
-		student_info = student.student_detect( detector, image, output,max_student_num);
+		if (behavior_yes_or_no == 1){
+			student_info = student.student_detect(detector, image, output, max_student_num);
+		}
+		student.good_face(detector,image,max_student_num,box,0);
+		student.face_match(detector,image);
 		/*vector<vector<Student_Info>>students_all = get<0>(student_info);
 		vector<Class_Info>class_info_all = get<1>(student_info);*/
 	}

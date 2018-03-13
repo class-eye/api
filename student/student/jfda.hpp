@@ -14,7 +14,7 @@ struct  FaceInfo{
 	std::vector<CvPoint2D32f> landmark;
 	string path;
 	vector<float>feature;
-	int id = -1;
+
 };
 struct FaceInfoInternal {
 	/*! \brief top left, right bottom bbox, [x1, y1, x2, y2] */
