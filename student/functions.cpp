@@ -291,6 +291,7 @@ void class_Json(vector<vector<Student_Info>>&students_all, vector<int>&student_v
 	
 	if (negtive_num == 10){
 		//start_time = buff;
+		
 		start_frame = class_info_all[i].cur_frame;
 		end_frame = class_info_all[i].cur_frame;
 		activity_order+=2;
@@ -396,8 +397,6 @@ void student_Json(vector<vector<Student_Info>>&students_all, vector<int>&student
 	all_rect[dongzuo][a - 1] = Json::Value(student_loc);
 	
 }
-
-
 void writeJson(vector<int>&student_valid, vector<vector<Student_Info>>&students_all, vector<Class_Info>&class_info_all, string &output,int &n){
 
 	int pos1 = output.find_last_of("/");

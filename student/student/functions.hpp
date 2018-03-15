@@ -18,7 +18,7 @@ int featureCompare(const std::vector<float> query_feature, const std::vector<flo
 float Compute_IOU(const cv::Rect& rectA, const cv::Rect& rectB);
 bool greate2(vector<float>a, vector<float>b);
 bool greate3(Student_Info a, Student_Info b);
-void writeJson(vector<int>&student_valid, vector<vector<Student_Info>>&students_all, vector<Class_Info>&class_info_all, string &videoname,int &n);
-void writeJson1(vector<int>&student_valid, vector<vector<Student_Info>>&students_all, vector<vector<Student_Info>>&ID, vector<Class_Info>&class_info_all, string &output, int &n);
+//void writeJson(vector<int>&student_valid, vector<vector<Student_Info>>&students_all, vector<Class_Info>&class_info_all, string &videoname,int &n);
+//void writeJson1(vector<int>&student_valid, vector<vector<Student_Info>>&students_all, vector<vector<Student_Info>>&ID, vector<Class_Info>&class_info_all, string &output, int &n);
 void drawGrid(Mat &image, vector<int>student_valid,vector<vector<Student_Info>>students_all);
 #endif

@@ -33,46 +33,23 @@ void initValue(int &n, int &max_student_num, vector<Class_Info>&class_info_all, 
 
 int main(){
 
-	/*vector<Class_Info>class_info_all;
-	vector<int>student_valid;
-	vector<vector<Student_Info>>students_all(70);
-	vector<vector<Student_Info>>ID(70);
-	vector<FaceInfo>standard_faces;*/
 	int max_student_num = 55;
-	//int b = 123;
 	std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>student_info;
-	/*int n1 = 0, n2 = 0;
-	float score_all = 0;*/
+	
 
-
-	/*if (caffe::GPUAvailable()) {
-		caffe::SetMode(caffe::GPU, 0);
-	}
-	Net net1("../models/pose_deploy.prototxt");
-	net1.CopyTrainedLayersFrom("../models/pose_iter_440000.caffemodel");
-	Net net2("../models/handsnet.prototxt");
-	net2.CopyTrainedLayersFrom("../models/handsnet_iter_12000.caffemodel");
-	Net net3("../models/face.prototxt");
-	net3.CopyTrainedLayersFrom("../models/face.caffemodel");
-	Net net4("../models/facefeature.prototxt");
-	net4.CopyTrainedLayersFrom("../models/facefeature.caffemodel");
-*/
 	Student_analy student("../models/pose_deploy.prototxt", "../models/pose_iter_440000.caffemodel",
 						  "../models/handsnet.prototxt", "../models/handsnet_iter_12000.caffemodel", 
 						  "../models/face.prototxt", "../models/face.caffemodel", 
-						  "../models/facefeature.prototxt", "../models/facefeature.caffemodel",0);
-
-
+						  "../models/facefeature.prototxt", "../models/facefeature.caffemodel",
+						  "../models/f.prototxt", "../models/f.caffemodel", 0);
 	jfda::JfdaDetector detector("../models/p.prototxt", "../models/p.caffemodel", "../models/r.prototxt", "../models/r.caffemodel", \
 		"../models/o.prototxt", "../models/o.caffemodel", "../models/l.prototxt", "../models/l.caffemodel");
 	detector.SetMaxImageSize(3000);
 	detector.SetMinSize(20);
 	detector.SetStageThresholds(0.5, 0.4, 0.55);
-	
 	string imgdir = "/home/liaowang/student_api/input_test/";
 	string output = "/home/liaowang/api_student_class/output2";
 	Rect box(0, 0, 0, 0);
-
 #if 1
 	vector<string>imagelist = fs::ListDir(imgdir, { "jpg" });
 	if (!fs::IsExists(output)){
@@ -86,22 +63,23 @@ int main(){
 		//if (i < 20){
 		PoseInfo pose1;
 		cout << "processing: " << i << endl;
+
+
 		if (behavior_yes_or_no != 1){
-			behavior_yes_or_no = student.GetStandaredFeats(image, output, max_student_num,box,0);
+			behavior_yes_or_no = student.GetStandaredFeats(image, output, max_student_num,0);
 		}
 		else{
 			cout << "n1 Finish" << endl;
 			break;
 		}
 	}
-
 	for (int i = 0; i < imagelist.size(); i++){
 		string imagep = imgdir + imagelist[i];
 		Mat image = imread(imagep);
 		if (behavior_yes_or_no == 1){
 			student_info = student.student_detect(detector, image, output, max_student_num);
 		}
-		student.good_face(detector,image,max_student_num,box,0);
+		student.good_face(detector,image,max_student_num,0);
 		student.face_match(detector,image);
 		/*vector<vector<Student_Info>>students_all = get<0>(student_info);
 		vector<Class_Info>class_info_all = get<1>(student_info);*/

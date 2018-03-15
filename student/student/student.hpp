@@ -11,8 +11,10 @@
 #include "pose.hpp"
 #include "fs.hpp"
 #include "facefeature.hpp"
-#include "incCn/HCNetSDK.h"  
-#include "incCn/PlayM4.h" 
+#ifdef __unix__
+#include <json/json.h>
+//#include <python2.7/Python.h>
+#endif
 using namespace cv;
 using namespace caffe;
 
@@ -76,12 +78,16 @@ public:
 	Student_analy(const string& pose_net, const string& pose_model,
 		    const string& hands_net, const string& hands_model, 
 		    const string& front_face_net, const string& front_face_model, 
-			const string& face_feature_net, const string& face_feature_model, int gpu_device = -1);
+			const string& face_feature_net, const string& face_feature_model, 
+			const string& real_front_face_net, const string& real_front_face_model, int gpu_device = -1);
 	~Student_analy();
-	int GetStandaredFeats(Mat &frame_1080, string &output, int &max_student_num, Rect &box, int add = 0);
+	int GetStandaredFeats(Mat &frame_1080, string &output, int &max_student_num,int stop = 0);
 	std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>student_detect(jfda::JfdaDetector &detector, Mat &image, string &output, int &max_student_num);
-	void good_face(jfda::JfdaDetector &detector, Mat &image_1080, int &max_student_num, Rect &box, int add = 0);
-	void face_match(jfda::JfdaDetector &detector, Mat &image_1080);
+	void good_face(jfda::JfdaDetector &detector, Mat &image_1080, int &max_student_num,int stop = 0);
+	void face_match(jfda::JfdaDetector &detector, Mat &image_1080,int stop=0);
+	void add_location(Rect &box);
+	void add_feature(jfda::JfdaDetector &detector,Mat &image_1080, Rect &box);
+	void add_match(int &location_num, int &face_num);
 	void init();
 	void clear();
 
@@ -98,8 +104,21 @@ private:
 	Net *handsnet;
 	Net *frontface_net;
 	Net *facefeature_net;
+	Net *real_frontface_net;
 
+	int id=0;
+	string stu_start_time[3];
+	string stu_end_time[3];
+	string stu_behavior[3];
 	
+	string cla_start_time[3];
+	string cla_end_time[3];
+	string cla_behavior[3];
+	
+	void writeJson(string &output);
+	void student_Json(int &i, int &j, string &start_time, int &start_frame, int &end_frame, int &activity_order, string &end_time, int &negtive_num, Point &ss, Json::Value &behavior_infomation, Json::Value &all_rect, string &dongzuo);
+	void class_Json(int &i, string &start_time, int &start_frame, int &end_frame, int &activity_order, string &end_time, int &negtive_num, Json::Value &class_infomation, string &dongzuo);
+
 };
 
 
