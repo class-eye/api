@@ -41,9 +41,9 @@ std::tuple<bool, float>is_front_face(Net &net, Mat &oriImg, Rect &face_bbox){
 }
 std::tuple<bool, float>real_front_face(Net &net, Mat &oriImg, Rect &face_bbox){
 	shared_ptr<Blob> data = net.blob_by_name("data");
-	data->Reshape(1, 3, 48, 48);
+	data->Reshape(1, 3, 32, 32);
 	cv::Mat patch = CropPatch(oriImg, face_bbox);
-	cv::resize(patch, patch, cv::Size(48, 48));
+	cv::resize(patch, patch, cv::Size(32, 32));
 	vector<cv::Mat> bgr;
 	cv::split(patch, bgr);
 	bgr[0].convertTo(bgr[0], CV_32F, 1.f / 128.f, -1.f);
@@ -58,7 +58,7 @@ std::tuple<bool, float>real_front_face(Net &net, Mat &oriImg, Rect &face_bbox){
 	net.Forward();
 	shared_ptr<Blob> prob = net.blob_by_name("prob");
 	float scores = prob->data_at(0, 1, 0, 0);
-	if (scores >= 0.8){
+	if (scores >= 0.7){
 		return std::make_tuple(true, scores);
 	}
 	else return std::make_tuple(false, scores);

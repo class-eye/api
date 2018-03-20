@@ -10,8 +10,7 @@
 #include <thread>
 #include "student/student.hpp"
 #include "student/functions.hpp"
-#include "incCn/HCNetSDK.h"  
-#include "incCn/PlayM4.h" 
+
 #include<tuple>
 using namespace std;
 using namespace cv;
@@ -33,7 +32,7 @@ void initValue(int &n, int &max_student_num, vector<Class_Info>&class_info_all, 
 
 int main(){
 
-	int max_student_num = 55;
+	int max_student_num = 56;
 	std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>student_info;
 	
 
@@ -47,10 +46,12 @@ int main(){
 	detector.SetMaxImageSize(3000);
 	detector.SetMinSize(20);
 	detector.SetStageThresholds(0.5, 0.4, 0.55);
-	string imgdir = "/home/liaowang/student_api/input_test/";
-	string output = "/home/liaowang/api_student_class/output2";
+	/*string imgdir = "/home/liaowang/student_api/input_test/";
+	string output = "/home/liaowang/api_student_class/output2";*/
+	string imgdir = "../input_test/";
+	string output = "../output2";
 	Rect box(0, 0, 0, 0);
-#if 1
+#if 0
 	vector<string>imagelist = fs::ListDir(imgdir, { "jpg" });
 	if (!fs::IsExists(output)){
 		fs::MakeDir(output);
@@ -85,23 +86,25 @@ int main(){
 		vector<Class_Info>class_info_all = get<1>(student_info);*/
 	}
 #endif
-#if 0
+#if 1
 	//-------------------------VIDEO---------------------------------------
 
-	string videopath = "../test_face.mp4";
+	string videopath = "../ch01_00000000032000000.mp4";
 	/*string output = "";
 	int max_student_num = 0;*/
 	VideoCapture capture(videopath);
+	/*long frameToStart = 90 * 25;
+	capture.set(CV_CAP_PROP_POS_FRAMES, frameToStart);*/
 	if (!capture.isOpened())
 	{
 		printf("video loading fail");
 	}
 	long totalFrameNumber = capture.get(CV_CAP_PROP_FRAME_COUNT);
 	cout << "all " << totalFrameNumber << " frame" << endl;
-	//long frameToStart = 13500; 
-	//capture.set(CV_CAP_PROP_POS_FRAMES, frameToStart);
+	
 	Mat frame;
 	int n = 0;
+	int behavior_yes_or_no = 0;
 	//std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>student_info;
 	while (true)
 	{
@@ -113,11 +116,10 @@ int main(){
 			imwrite(output_c, frame);
 		}*/
 		
-		PoseInfo pose1;
-		if (n1 != 1){
+		if (behavior_yes_or_no != 1){
 			if (n % 25 == 0){
-				int nn = n / 25;
-				int a = GetStandaredFeats(net1, pose1, frame, nn, n1, score_all, output, max_student_num, students_all, student_valid, class_info_all);
+				cout << "processing " << n/25 << " frame" << endl;
+				behavior_yes_or_no = student.GetStandaredFeats(frame,output, max_student_num, 0);
 			}
 		}
 		else{
@@ -128,27 +130,31 @@ int main(){
 	}
 	capture.release();
 
+	
 	VideoCapture capture1(videopath);
+	/*long frameToStart = 525 * 25;
+	capture1.set(CV_CAP_PROP_POS_FRAMES, frameToStart);*/
 	if (!capture1.isOpened())
 	{
 		printf("video loading fail");
 	}
 	n = 0;
 	while (true)
-	{
-		
+	{	
 		if (!capture1.read(frame)){
 			break;
-		}
-		
+		}	
 		//cv::resize(frame, frame, Size(0, 0), 2 / 3., 2 / 3.);
-		PoseInfo pose;
+		if (behavior_yes_or_no == 1){
+			if (n % 25 == 0){
+				student_info = student.student_detect(detector, frame, output, max_student_num);
+			}
+		}	
 		if (n % 25 == 0){
-			int nn = n / 25;
-			student_info = student_detect(net1, net2, net3, net4, detector, frame, nn, pose, output, students_all, ID, student_valid, class_info_all, standard_faces, max_student_num);
+			student.good_face(detector, frame, max_student_num, 0);
+			student.face_match(detector, frame);
+		
 		}
-		/*vector<vector<Student_Info>>students_all = get<0>(student_info);
-		vector<Class_Info>class_info_all = get<1>(student_info);*/
 		n++;
 	}
 

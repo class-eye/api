@@ -5,6 +5,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include "cv.h"  
+#include "json/json.h"
 
 #include "student/functions.hpp"
 #include<cmath>
@@ -453,7 +454,6 @@ void writeJson(vector<int>&student_valid, vector<vector<Student_Info>>&students_
 			}
 			string dongzuo = "all_disscussion_2";
 			class_Json(students_all, student_valid,class_info_all, i, start_time[1], start_frame[1], end_frame[1], activity_order[1], end_time[1], negtive_num, class_infomation, dongzuo);
-
 		}
 		if (class_info_all[i].all_disscussion_4 == true){
 			int negtive_num = 0;
