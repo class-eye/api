@@ -8,10 +8,11 @@
 #include "cv.h"  
 #include <caffe/caffe.hpp>
 #include <thread>
-#include "student/student.hpp"
-#include "student/functions.hpp"
-
+#include "../student/student/student.hpp"
+#include "../student/student/functions.hpp"
 #include<tuple>
+//#include "../mysql/MyDB.h"
+
 using namespace std;
 using namespace cv;
 using namespace caffe;
@@ -40,7 +41,7 @@ int main(){
 						  "../models/handsnet.prototxt", "../models/handsnet_iter_12000.caffemodel", 
 						  "../models/face.prototxt", "../models/face.caffemodel", 
 						  "../models/facefeature.prototxt", "../models/facefeature.caffemodel",
-						  "../models/f.prototxt", "../models/f.caffemodel", 0);
+						  "../models/f1.prototxt", "../models/f_iter_3000.caffemodel", 0);
 	jfda::JfdaDetector detector("../models/p.prototxt", "../models/p.caffemodel", "../models/r.prototxt", "../models/r.caffemodel", \
 		"../models/o.prototxt", "../models/o.caffemodel", "../models/l.prototxt", "../models/l.caffemodel");
 	detector.SetMaxImageSize(3000);
@@ -51,6 +52,17 @@ int main(){
 	string imgdir = "../input_test/";
 	string output = "../output2";
 	Rect box(0, 0, 0, 0);
+
+	/*cout << "0 done" << endl;
+	pyMyDB pyDB("localhost", "root", "liuwentong","eye", 3306);
+	cout << "0.5 done" << endl;
+	pyDB.updateStudentFacePic(1, 2, "/home/lw/1.jpg");
+	cout << "1 done" << endl;
+	pyDB.updateStudentFacePic(2, 3, "/home/lw/2.jpg");
+	cout << "2 done" << endl;
+	pyDB.updateStudentFacePic(4, 5, "/home/lw/3.jpg");
+	cout << "3 done" << endl;*/
+
 #if 0
 	vector<string>imagelist = fs::ListDir(imgdir, { "jpg" });
 	if (!fs::IsExists(output)){
@@ -89,12 +101,12 @@ int main(){
 #if 1
 	//-------------------------VIDEO---------------------------------------
 
-	string videopath = "../ch01_00000000032000000.mp4";
+	string videopath = "../ch01_00000000072000000.mp4";
 	/*string output = "";
 	int max_student_num = 0;*/
 	VideoCapture capture(videopath);
-	/*long frameToStart = 90 * 25;
-	capture.set(CV_CAP_PROP_POS_FRAMES, frameToStart);*/
+	long frameToStart = 40 * 25;
+	capture.set(CV_CAP_PROP_POS_FRAMES, frameToStart);
 	if (!capture.isOpened())
 	{
 		printf("video loading fail");
@@ -115,7 +127,6 @@ int main(){
 			string output_c = "/home/liaowang/student_api_no_Hik/inputimg/" + to_string(n) + ".jpg";
 			imwrite(output_c, frame);
 		}*/
-		
 		if (behavior_yes_or_no != 1){
 			if (n % 25 == 0){
 				cout << "processing " << n/25 << " frame" << endl;
@@ -151,8 +162,9 @@ int main(){
 			}
 		}	
 		if (n % 25 == 0){
-			student.good_face(detector, frame, max_student_num, 0);
-			student.face_match(detector, frame);
+			int finish=student.good_face(detector, frame, max_student_num, 0);
+			
+			if(finish==1)student.face_match(detector, frame,0);
 		
 		}
 		n++;
