@@ -41,17 +41,17 @@ std::tuple<bool, float>is_front_face(Net &net, Mat &oriImg, Rect &face_bbox){
 }
 std::tuple<bool, float>real_front_face(Net &net, Mat &oriImg, Rect &face_bbox){
 	shared_ptr<Blob> data = net.blob_by_name("data");
-	data->Reshape(1, 3, 32, 32);
+	data->Reshape(1, 3, 40, 40);
 	cv::Mat patch = CropPatch(oriImg, face_bbox);
-	cv::resize(patch, patch, cv::Size(32, 32));
+	cv::resize(patch, patch, cv::Size(40, 40));
 	vector<cv::Mat> bgr;
 	cv::split(patch, bgr);
-	bgr[0].convertTo(bgr[0], CV_32F, 1.f / 128.f, -1.f);
+	/*bgr[0].convertTo(bgr[0], CV_32F, 1.f / 128.f, -1.f);
 	bgr[1].convertTo(bgr[1], CV_32F, 1.f / 128.f, -1.f);
-	bgr[2].convertTo(bgr[2], CV_32F, 1.f / 128.f, -1.f);
-	/*bgr[0].convertTo(bgr[0], CV_32F, 1.f, 0.0);
-	bgr[1].convertTo(bgr[1], CV_32F, 1.f, 0.0);
-	bgr[2].convertTo(bgr[2], CV_32F, 1.f, 0.0);*/
+	bgr[2].convertTo(bgr[2], CV_32F, 1.f / 128.f, -1.f);*/
+	bgr[0].convertTo(bgr[0], CV_32F, 1.f / 255.f, 0.0);
+	bgr[1].convertTo(bgr[1], CV_32F, 1.f / 255.f, 0.0);
+	bgr[2].convertTo(bgr[2], CV_32F, 1.f / 255.f, 0.0);
 	
 	const int bias = data->offset(0, 1, 0, 0);
 	const int bytes = bias*sizeof(float);

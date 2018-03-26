@@ -15,6 +15,7 @@ struct  FaceInfo{
 	string path;
 	vector<float>feature;
 
+	cv::Mat img_face;
 };
 struct FaceInfoInternal {
 	/*! \brief top left, right bottom bbox, [x1, y1, x2, y2] */

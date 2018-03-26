@@ -358,14 +358,14 @@ void Analys_Behavior(vector<vector<Student_Info>>&students_all, vector<vector<St
 				//}
 			}
 			//---------------------------------------------移动人脸识别-----------------------------------------------------
-			if (students_all[student_valid[j]][0].matching_at_end != 100){
+			/*if (students_all[student_valid[j]][0].matching_at_end != 100){
 				if (ID[students_all[student_valid[j]][0].matching_at_end].empty()){
 					ID[students_all[student_valid[j]][0].matching_at_end].assign(students_all[student_valid[j]].begin(), students_all[student_valid[j]].end());
 				}
 				else{
 					ID[students_all[student_valid[j]][0].matching_at_end].push_back(students_all[student_valid[j]].back());
 				}
-			}
+			}*/
 			//--------------------------------------------------------------------------------------------------------------
 
 		}

@@ -78,7 +78,7 @@ public:
 	int GetStandaredFeats(Mat &frame_1080, string &output, int &max_student_num,int stop = 0);
 	std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>student_detect(jfda::JfdaDetector &detector, Mat &image, string &output, int &max_student_num);
 	int good_face(jfda::JfdaDetector &detector, Mat &image_1080, int &max_student_num,int stop = 0);
-	void face_match(jfda::JfdaDetector &detector, Mat &image_1080,int stop=0);
+	void face_match(jfda::JfdaDetector &detector, Mat &image_1080, int &max_student_num,int stop = 0);
 	void add_location(Rect &box);
 	void add_feature(jfda::JfdaDetector &detector,Mat &image_1080, Rect &box);
 	void add_match(int &location_num, int &face_num);
@@ -90,7 +90,7 @@ private:
 	vector<vector<Student_Info>>ID;
 	vector<int>student_valid;
 	vector<Class_Info> class_info_all;
-	vector<FaceInfo>standard_faces;
+	vector<vector<FaceInfo>>standard_faces;
 	
 	int n=0;
 	int n1=0;
