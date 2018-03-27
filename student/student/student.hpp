@@ -79,21 +79,23 @@ public:
 	std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>student_detect(jfda::JfdaDetector &detector, Mat &image, string &output, int &max_student_num);
 	int good_face(jfda::JfdaDetector &detector, Mat &image_1080, int &max_student_num,int stop = 0);
 	void face_match(jfda::JfdaDetector &detector, Mat &image_1080, int &max_student_num,int stop = 0);
+	void face_vote(Mat &image_1080, int &max_student_num);
 	void add_location(Rect &box);
 	void add_feature(jfda::JfdaDetector &detector,Mat &image_1080, Rect &box);
 	void add_match(int &location_num, int &face_num);
+	void delete_face(int &dir,int &x);
 	void init();
 	void clear();
 
 private:
 	vector<vector<Student_Info>>students_all;
-	vector<vector<Student_Info>>ID;
 	vector<int>student_valid;
 	vector<Class_Info> class_info_all;
 	vector<vector<FaceInfo>>standard_faces;
 	
 	int n=0;
 	int n1=0;
+	int save_num = 2;
 	
 	Net *posenet;
 	Net *handsnet;

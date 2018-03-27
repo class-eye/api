@@ -223,7 +223,7 @@ void detect_discontinuous_behavior(Net &net2, Mat &image, PoseInfo &pose, Studen
 
 }
 
-void Analys_Behavior(vector<vector<Student_Info>>&students_all, vector<vector<Student_Info>>&ID, vector<int>&student_valid, vector<Class_Info> &class_info_all, Mat &image_1080, Mat &image, int &n){
+void Analys_Behavior(vector<vector<Student_Info>>&students_all, vector<int>&student_valid, vector<Class_Info> &class_info_all, Mat &image_1080, Mat &image, int &n){
 	Class_Info class_info;
 	class_info.cur_frame = n;
 

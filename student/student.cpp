@@ -28,7 +28,6 @@ Student_analy::Student_analy(const string& pose_net, const string& pose_model,
 	const string& face_feature_net, const string& face_feature_model, 
 	const string& real_front_face_net, const string& real_front_face_model, int gpu_device){
 	students_all.resize(70);
-	ID.resize(70);
 	standard_faces.resize(70);
 	if (gpu_device < 0) {
 		caffe::SetMode(caffe::CPU, -1);
@@ -223,52 +222,8 @@ std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>Student_analy::stude
 			} //if (pose.subset[i][19] >= 3 && score >= 0.4) end
 		}//for (int i = 0; i < pose.subset.size(); i++) end
 
-#if 0
-		//-------------------------人脸匹配--------------------------------------------
-		//timer.Tic();
-		int matching_num = 0;
-		//int good_face_num = 0;
-		for (int i = 0; i < student_valid.size(); i++){
-			if (students_all[student_valid[i]][0].matching_at_end < 100){
-				matching_num++;
-			}
-			/*if (!students_all[student_valid[i]][0].good_face_features.empty()){
-			good_face_num++;
-			}*/
-		}
-		//cout << "good face numble: " << good_face_num << endl;
-
-		if (standard_faces.size() < max_student_num){
-			cout << "standard_faces.size(): " << standard_faces.size() << endl;
-			good_face(net3, net4, detector, students_all, student_valid, n, image_1080, standard_faces, max_student_num);
-		}
-		else{
-			//cout << "standard_faces.size(): " << standard_faces.size() << endl;
-			cout << "good face done" << endl;
-		}
-
-		cout << "matching people numble: " << matching_num << endl;
-		if (matching_num < student_valid.size() && standard_faces.size() == max_student_num){
-			face_match(net3, net4, detector, students_all, student_valid, n, image_1080, standard_faces);
-			//renew_face_match(net4, detector, students_all, student_valid, n, image_1080, standard_faces);
-		}
-		/*face_match(net4, detector, students_all, student_valid, n, image_1080, standard_faces);
-		renew_face_match(net4, detector, students_all, student_valid, n, image_1080, standard_faces);*/
-
-#endif	
-
-		//timer.Toc();
-		//cout << "face match cost " << timer.Elasped() / 1000.0 << " s" << endl;
-
 		//----------------------分析行为----------------------------------
-		Analys_Behavior(students_all, ID, student_valid, class_info_all, image_1080, image, n);
-
-		//for (int i = 0; i < student_valid.size(); i++){
-		//	if (students_all[student_valid[i]][0].matching_at_end < 100){
-		//		cv::putText(image, to_string(students_all[student_valid[i]][0].matching_at_end), ID[students_all[student_valid[i]][0].matching_at_end].back().loc, FONT_HERSHEY_COMPLEX, 0.7, Scalar(0, 0, 255), 2);
-		//		//cout << "student  " << student_valid[i] << "matching " << students_all[student_valid[i]][0].matching_at_end << endl;
-		//	}
-		//}
+		Analys_Behavior(students_all,student_valid, class_info_all, image_1080, image, n);
 
 
 		/*if (n % (10) == 0){
@@ -283,17 +238,9 @@ std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>Student_analy::stude
 			writeJson(output);
 		}*/
 
-
-		/*for (int i = 0; i < student_valid.size(); i++){
-		if (students_all[student_valid[i]][0].matching_at_end < 100){
-		rectangle(image, students_all[student_valid[i]][0].body_bbox, Scalar(0, 255, 0),2);
-		}
-		}*/
-
 		//drawGrid(image,student_valid,students_all);
 		//string output1;
 		//output1 = output + "/" + to_string(n) + ".jpg";
-		////cv::resize(image, image, Size(0, 0), 1 / 2., 1 / 2.);
 		//cv::imwrite(output1, image);
 		/*timer.Toc();
 		cout << "the " << n << " frame cost " << timer.Elasped() / 1000.0 << " s" << endl;*/
@@ -510,7 +457,8 @@ int Student_analy::good_face(jfda::JfdaDetector &detector, Mat &image_1080, int 
 							vector<FaceInfo> faces = detector.Detect(faceimg, facem);
 							if (faces.size() != 0){
 								FaceInfo faceinfo = faces[0];
-
+								faceinfo.center.x = faceinfo.bbox.x + 0.5*faceinfo.bbox.width + face_bbox_1080.x;
+								faceinfo.center.y = faceinfo.bbox.y + 0.5*faceinfo.bbox.height + face_bbox_1080.y;
 								/*Rect origin_box;
 								origin_box.x = faceinfo.bbox.x + face_bbox_1080.x;
 								origin_box.y = faceinfo.bbox.y + face_bbox_1080.y;
@@ -563,21 +511,20 @@ int Student_analy::good_face(jfda::JfdaDetector &detector, Mat &image_1080, int 
 void Student_analy::face_match(jfda::JfdaDetector &detector, Mat &image_1080, int &max_student_num, int stop){
 	if (stop == 0){
 
-		int matching_num = 0;
-		//int good_face_num = 0;
-		for (int i = 0; i < student_valid.size(); i++){
-			if (students_all[student_valid[i]][0].matching_at_end < 100){
-				matching_num++;
-			}
-		}
-		//cout << "matching people num: " << matching_num << endl;
-
-		int match_this_time = 0;
+		//int matching_num = 0;
+		////int good_face_num = 0;
+		//for (int i = 0; i < student_valid.size(); i++){
+		//	if (students_all[student_valid[i]][0].have_matched==true){
+		//		matching_num++;
+		//	}
+		//}
+		////cout << "matching people num: " << matching_num << endl
+		//int match_this_time = 0;
 
 		for (int j = 0; j < student_valid.size(); j++){
 			if (students_all[student_valid[j]][0].have_matched == false){
 				if (students_all[student_valid[j]][0].cur_size != students_all[student_valid[j]].size()){
-					int save_num = 4;
+					
 					//if (find(num.begin(), num.end(), student_valid[j]) != num.end()){	
 
 					if (students_all[student_valid[j]][students_all[student_valid[j]].size() - 1].face_bbox.width != 0){
@@ -591,7 +538,8 @@ void Student_analy::face_match(jfda::JfdaDetector &detector, Mat &image_1080, in
 							vector<FaceInfo> faces = detector.Detect(faceimg, facem);
 							if (faces.size() != 0){
 								FaceInfo faceinfo = faces[0];
-
+								faceinfo.center.x = faceinfo.bbox.x + 0.5*faceinfo.bbox.width + face_bbox_1080.x;
+								faceinfo.center.y = faceinfo.bbox.y + 0.5*faceinfo.bbox.height + face_bbox_1080.y;
 								std::tuple<bool, float>front_face_or_not = is_front_face(*frontface_net, faceimg, faceinfo.bbox);
 								bool front_face = get<0>(front_face_or_not);
 								float sco = get<1>(front_face_or_not);
@@ -617,72 +565,160 @@ void Student_analy::face_match(jfda::JfdaDetector &detector, Mat &image_1080, in
 									}
 									if (feat_map.begin()->first > 0.56){
 										students_all[student_valid[j]][0].matching.push_back(feat_map.begin()->second);
-										if (standard_faces[feat_map.begin()->second].size() < save_num){
-											faceinfo.img_face = CropPatch(faceimg,faceinfo.bbox);
-											string output3 = standard_faces[feat_map.begin()->second][0].path + "/" + to_string(standard_faces[feat_map.begin()->second].size()) + ".jpg";
+										faceinfo.img_face = CropPatch(faceimg, faceinfo.bbox);
+										if (standard_faces[feat_map.begin()->second].size() < save_num+1){
+											
+											string output3 = standard_faces[feat_map.begin()->second][0].path + "/" + to_string(n) + ".jpg";
 											imwrite(output3, faceinfo.img_face);
+											faceinfo.path = output3;
 											standard_faces[feat_map.begin()->second].push_back(faceinfo);
 										}
+										////-----------------------自动替换标准脸---------------------------
+										//else if (standard_faces[feat_map.begin()->second].size() == save_num){
+										//	map<float, int>face_dist;
+										//	for (int i = 0; i < save_num; i++){
+										//		float distance = euDistance(standard_faces[feat_map.begin()->second][i].center,faceinfo.center);
+										//		face_dist.insert(make_pair(distance,i));
+										//	}
+										//	if (face_dist.begin()->first > 200 && face_dist.begin()->second != 0){
+										//		string de_name = standard_faces[feat_map.begin()->second][face_dist.begin()->second].path;
+										//		DeleteFile(de_name.c_str());
+										//		string dir = standard_faces[feat_map.begin()->second][0].path + "/" + to_string(n) + ".jpg";
+										//		imwrite(dir, faceinfo.img_face);
+										//		FaceInfo replace_face;
+										//		replace_face.path = dir;
+										//		replace_face.img_face = faceinfo.img_face;
+										//		replace_face.center = faceinfo.center;
+										//		standard_faces[feat_map.begin()->second].erase(standard_faces[feat_map.begin()->second].begin() + face_dist.begin()->second);
+										//		standard_faces[feat_map.begin()->second].push_back(replace_face);
+										//	}
+										//}
+										
 									}
 									//}
 								}
 							}
 						}
 					
-						else if (students_all[student_valid[j]][0].matching.size() == save_num &&students_all[student_valid[j]][0].have_matched == false){
-						
-							int max_similar = 0;
-
-							for (int i = 0; i < save_num; i++){
-								int num = count(students_all[student_valid[j]][0].matching.begin(), students_all[student_valid[j]][0].matching.end(), students_all[student_valid[j]][0].matching[i]);
-								if (num > max_similar && num > 1){
-									max_similar = num;
-									students_all[student_valid[j]][0].matching_at_end = students_all[student_valid[j]][0].matching[i];
-								}
-							}
-							int used = -1;
-							for (int k = 0; k < student_valid.size(); k++){
-								if (students_all[student_valid[k]][0].match_history.find(students_all[student_valid[j]][0].matching_at_end) != students_all[student_valid[k]][0].match_history.end()){
-									used++;
-								}
-							}
-
-							if (used != -1){
-								students_all[student_valid[j]][0].matching_at_end = 100;
-								students_all[student_valid[j]][0].matching.erase(students_all[student_valid[j]][0].matching.begin());
-							}
-
-							if (students_all[student_valid[j]][0].matching_at_end != 100){
-								students_all[student_valid[j]][0].prev_matching_at_end = students_all[student_valid[j]][0].matching_at_end;
-								students_all[student_valid[j]][0].have_matched = true;
-								students_all[student_valid[j]][0].match_history.insert(make_pair(students_all[student_valid[j]][0].matching_at_end, student_valid[j]));
-								match_this_time++;
-								string dir2 = "../s_match_face/" + to_string(student_valid[j]);
-								if (!fs::IsExists(dir2)){
-									fs::MakeDir(dir2);
-								}
-								string dir1 = dir2 + "/" + "_" + to_string(student_valid[j]) + ".jpg";
-								//string dir1 = standard_faces[students_all[student_valid[j]][0].matching_at_end].path + "/" + to_string(n) + "_" + to_string(student_valid[j]) + ".jpg";
-								cv::imwrite(dir1, faceimg);
-								
-								int pos = standard_faces[students_all[student_valid[j]][0].matching_at_end][0].path.find_last_of("/");
-								string aa = standard_faces[students_all[student_valid[j]][0].matching_at_end][0].path.substr(pos);
-								string new_name = dir2 + "/" + aa;
-								//MoveFile(standard_faces[students_all[student_valid[j]][0].matching_at_end][0].path.c_str(), new_name.c_str());
-							}
-							else{
-								students_all[student_valid[j]][0].matching.erase(students_all[student_valid[j]][0].matching.begin());
-							}
-						}
+						//else if (students_all[student_valid[j]][0].matching.size() == save_num &&students_all[student_valid[j]][0].have_matched == false){
+						//
+						//	int max_similar = 0;
+						//	for (int i = 0; i < save_num; i++){
+						//		int num = count(students_all[student_valid[j]][0].matching.begin(), students_all[student_valid[j]][0].matching.end(), students_all[student_valid[j]][0].matching[i]);
+						//		if (num > max_similar && num > 1){
+						//			max_similar = num;
+						//			students_all[student_valid[j]][0].matching_at_end = students_all[student_valid[j]][0].matching[i];
+						//		}
+						//	}
+						//	int used = -1;
+						//	for (int k = 0; k < student_valid.size(); k++){
+						//		if (students_all[student_valid[k]][0].match_history.find(students_all[student_valid[j]][0].matching_at_end) != students_all[student_valid[k]][0].match_history.end()){
+						//			used++;
+						//		}
+						//	}
+						//	if (used != -1){
+						//		students_all[student_valid[j]][0].matching_at_end = 100;
+						//		students_all[student_valid[j]][0].matching.erase(students_all[student_valid[j]][0].matching.begin());
+						//	}
+						//	if (students_all[student_valid[j]][0].matching_at_end != 100){
+						//		students_all[student_valid[j]][0].prev_matching_at_end = students_all[student_valid[j]][0].matching_at_end;
+						//		students_all[student_valid[j]][0].have_matched = true;
+						//		students_all[student_valid[j]][0].match_history.insert(make_pair(students_all[student_valid[j]][0].matching_at_end, student_valid[j]));
+						//		match_this_time++;
+						//		string dir2 = "../s_match_face/" + to_string(student_valid[j]);
+						//		if (!fs::IsExists(dir2)){
+						//			fs::MakeDir(dir2);
+						//		}
+						//		string dir1 = dir2 + "/" + "_" + to_string(student_valid[j]) + ".jpg";
+						//		//string dir1 = standard_faces[students_all[student_valid[j]][0].matching_at_end].path + "/" + to_string(n) + "_" + to_string(student_valid[j]) + ".jpg";
+						//		cv::imwrite(dir1, faceimg);
+						//		
+						//		int pos = standard_faces[students_all[student_valid[j]][0].matching_at_end][0].path.find_last_of("/");
+						//		string aa = standard_faces[students_all[student_valid[j]][0].matching_at_end][0].path.substr(pos);
+						//		string new_name = dir2 + "/" + aa + ".jpg";
+						//		//MoveFile(standard_faces[students_all[student_valid[j]][0].matching_at_end][0].path.c_str(), new_name.c_str());
+						//		imwrite(new_name,standard_faces[students_all[student_valid[j]][0].matching_at_end][0].img_face);
+						//	}
+						//	else{
+						//		students_all[student_valid[j]][0].matching.erase(students_all[student_valid[j]][0].matching.begin());
+						//	}
+						//}
 					}
 					//}
 				}
 			}
 		}
-		cout << "当前帧匹配人数/剩余匹配人数: " << match_this_time << " / " << (max_student_num - matching_num) << endl;
-		cout <<"============================================================" << endl;
+		/*cout << "当前帧匹配人数/剩余匹配人数: " << match_this_time << " / " << (max_student_num - matching_num) << endl;
+		cout <<"============================================================" << endl;*/
 	}
 
+}
+void Student_analy::face_vote(Mat &image_1080, int &max_student_num){
+	int matching_num = 0;
+	for (int i = 0; i < student_valid.size(); i++){
+		if (students_all[student_valid[i]][0].have_matched == true){
+			matching_num++;
+		}
+	}
+	//cout << "matching people num: " << matching_num << endl;
+	int match_this_time = 0;
+	for (int j = 0; j < student_valid.size(); j++){
+		if (students_all[student_valid[j]][0].cur_size != students_all[student_valid[j]].size()){
+			students_all[student_valid[j]][0].cur_size = students_all[student_valid[j]].size();
+			if (students_all[student_valid[j]][students_all[student_valid[j]].size() - 1].face_bbox.width != 0){
+				Rect face_bbox_720 = students_all[student_valid[j]][students_all[student_valid[j]].size() - 1].face_bbox;
+				Rect face_bbox_1080(face_bbox_720.x * 3 / 2, face_bbox_720.y * 3 / 2, face_bbox_720.width * 3 / 2., face_bbox_720.height * 3 / 2);
+				Mat faceimg = image_1080(face_bbox_1080);
+				if (students_all[student_valid[j]][0].matching.size()==save_num &&students_all[student_valid[j]][0].have_matched == false){
+					int max_similar = 0;
+					for (int i = 0; i < save_num; i++){
+						int num = count(students_all[student_valid[j]][0].matching.begin(), students_all[student_valid[j]][0].matching.end(), students_all[student_valid[j]][0].matching[i]);
+						if (num > max_similar && num > 1){
+							max_similar = num;
+							students_all[student_valid[j]][0].matching_at_end = students_all[student_valid[j]][0].matching[i];
+						}
+					}
+					int used = -1;
+					for (int k = 0; k < student_valid.size(); k++){
+						if (students_all[student_valid[k]][0].match_history.find(students_all[student_valid[j]][0].matching_at_end) != students_all[student_valid[k]][0].match_history.end()){
+							used++;
+						}
+					}
+
+					if (used != -1){
+						students_all[student_valid[j]][0].matching_at_end = 100;
+						students_all[student_valid[j]][0].matching.erase(students_all[student_valid[j]][0].matching.begin());
+					}
+
+					if (students_all[student_valid[j]][0].matching_at_end != 100){
+						students_all[student_valid[j]][0].prev_matching_at_end = students_all[student_valid[j]][0].matching_at_end;
+						students_all[student_valid[j]][0].have_matched = true;
+						students_all[student_valid[j]][0].match_history.insert(make_pair(students_all[student_valid[j]][0].matching_at_end, student_valid[j]));
+						match_this_time++;
+						string dir2 = "../s_match_face/" + to_string(student_valid[j]);
+						if (!fs::IsExists(dir2)){
+							fs::MakeDir(dir2);
+						}
+						string dir1 = dir2 + "/" + "_" + to_string(student_valid[j]) + ".jpg";
+						//string dir1 = standard_faces[students_all[student_valid[j]][0].matching_at_end].path + "/" + to_string(n) + "_" + to_string(student_valid[j]) + ".jpg";
+						cv::imwrite(dir1, faceimg);
+
+						int pos = standard_faces[students_all[student_valid[j]][0].matching_at_end][0].path.find_last_of("/");
+						string aa = standard_faces[students_all[student_valid[j]][0].matching_at_end][0].path.substr(pos);
+						string new_name = dir2 + "/" + aa + ".jpg";
+						//MoveFile(standard_faces[students_all[student_valid[j]][0].matching_at_end][0].path.c_str(), new_name.c_str());
+						imwrite(new_name, standard_faces[students_all[student_valid[j]][0].matching_at_end][0].img_face);
+					}
+					else{
+						students_all[student_valid[j]][0].matching.erase(students_all[student_valid[j]][0].matching.begin());
+					}
+				}
+			}
+		}
+		//}
+	}
+	cout<< "当前帧匹配人数/剩余匹配人数: " << match_this_time << " / " << (max_student_num - matching_num) << endl;
+	cout<< "============================================================" << endl;
 }
 
 
@@ -734,4 +770,18 @@ void Student_analy::clear(){
 	for (int i = 0; i < 70; i++){
 		students_all[i].clear();
 	}
+}
+
+void Student_analy::delete_face(int &dir, int &x){
+	string de_name = standard_faces[dir][0].path + "/" + to_string(x) + ".jpg";
+	DeleteFile(de_name.c_str());
+	vector<string>filenames = fs::ListDir(standard_faces[dir][0].path, { "jpg" });
+	int order;
+	string de = to_string(x) + ".jpg";
+	for (order = 0; order < filenames.size(); order++){
+		if (filenames[order] == de)break;
+	}
+	standard_faces[dir].erase(standard_faces[dir].begin() + order);
+	students_all[dir][0].have_matched = false;
+	students_all[dir][0].matching_at_end = 100;
 }

@@ -16,6 +16,7 @@ struct  FaceInfo{
 	vector<float>feature;
 
 	cv::Mat img_face;
+	cv::Point center;
 };
 struct FaceInfoInternal {
 	/*! \brief top left, right bottom bbox, [x1, y1, x2, y2] */
