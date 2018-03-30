@@ -95,7 +95,7 @@ private:
 	
 	int n=0;
 	int n1=0;
-	int save_num = 2;
+	int save_num = 3;
 	
 	Net *posenet;
 	Net *handsnet;
