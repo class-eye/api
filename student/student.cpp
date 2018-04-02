@@ -255,7 +255,6 @@ int Student_analy::GetStandaredFeats(Mat &frame_1080, string &output, int &max_s
 			PoseInfo pose;
 			Timer timer;
 			Mat frame;
-			n1 = 0;
 			cv::resize(frame_1080, frame, Size(0, 0), 2 / 3., 2 / 3.);
 			pose_detect(*posenet, frame, pose);
 			int stu_n = 0;
@@ -345,7 +344,7 @@ int Student_analy::GetStandaredFeats(Mat &frame_1080, string &output, int &max_s
 			if (stu_n >= max_student_num){
 				//max_student_num = stu_n;
 				cout << stu_n << " / " << stu_real << endl;
-				n1++;
+				
 				//if (score_sum > score_all){
 				//score_all = score_sum;
 				student_valid.clear();
@@ -412,6 +411,8 @@ int Student_analy::GetStandaredFeats(Mat &frame_1080, string &output, int &max_s
 						}
 					}
 				}
+				frame.copyTo(location_pic);
+				return 1;
 				//}
 			}
 			else{ cout << "找到学生数量: " << stu_n << endl; }
@@ -428,8 +429,8 @@ int Student_analy::GetStandaredFeats(Mat &frame_1080, string &output, int &max_s
 				}
 			}
 			n++;*/
-			return n1;
 			
+			return 0;
 		}
 	}
 }
@@ -638,57 +639,9 @@ void Student_analy::face_match(jfda::JfdaDetector &detector, Mat &image_1080, in
 							}
 						}
 					}
-
-					//else if (students_all[student_valid[j]][0].matching.size() == save_num &&students_all[student_valid[j]][0].have_matched == false){
-					//
-					//	int max_similar = 0;
-					//	for (int i = 0; i < save_num; i++){
-					//		int num = count(students_all[student_valid[j]][0].matching.begin(), students_all[student_valid[j]][0].matching.end(), students_all[student_valid[j]][0].matching[i]);
-					//		if (num > max_similar && num > 1){
-					//			max_similar = num;
-					//			students_all[student_valid[j]][0].matching_at_end = students_all[student_valid[j]][0].matching[i];
-					//		}
-					//	}
-					//	int used = -1;
-					//	for (int k = 0; k < student_valid.size(); k++){
-					//		if (students_all[student_valid[k]][0].match_history.find(students_all[student_valid[j]][0].matching_at_end) != students_all[student_valid[k]][0].match_history.end()){
-					//			used++;
-					//		}
-					//	}
-					//	if (used != -1){
-					//		students_all[student_valid[j]][0].matching_at_end = 100;
-					//		students_all[student_valid[j]][0].matching.erase(students_all[student_valid[j]][0].matching.begin());
-					//	}
-					//	if (students_all[student_valid[j]][0].matching_at_end != 100){
-					//		students_all[student_valid[j]][0].prev_matching_at_end = students_all[student_valid[j]][0].matching_at_end;
-					//		students_all[student_valid[j]][0].have_matched = true;
-					//		students_all[student_valid[j]][0].match_history.insert(make_pair(students_all[student_valid[j]][0].matching_at_end, student_valid[j]));
-					//		match_this_time++;
-					//		string dir2 = "../s_match_face/" + to_string(student_valid[j]);
-					//		if (!fs::IsExists(dir2)){
-					//			fs::MakeDir(dir2);
-					//		}
-					//		string dir1 = dir2 + "/" + "_" + to_string(student_valid[j]) + ".jpg";
-					//		//string dir1 = standard_faces[students_all[student_valid[j]][0].matching_at_end].path + "/" + to_string(n) + "_" + to_string(student_valid[j]) + ".jpg";
-					//		cv::imwrite(dir1, faceimg);
-					//		
-					//		int pos = standard_faces[students_all[student_valid[j]][0].matching_at_end][0].path.find_last_of("/");
-					//		string aa = standard_faces[students_all[student_valid[j]][0].matching_at_end][0].path.substr(pos);
-					//		string new_name = dir2 + "/" + aa + ".jpg";
-					//		//MoveFile(standard_faces[students_all[student_valid[j]][0].matching_at_end][0].path.c_str(), new_name.c_str());
-					//		imwrite(new_name,standard_faces[students_all[student_valid[j]][0].matching_at_end][0].img_face);
-					//	}
-					//	else{
-					//		students_all[student_valid[j]][0].matching.erase(students_all[student_valid[j]][0].matching.begin());
-					//	}
-					//}
-					//}
-					//}
 				}
 			}
 		}
-		/*cout << "当前帧匹配人数/剩余匹配人数: " << match_this_time << " / " << (max_student_num - matching_num) << endl;
-		cout <<"============================================================" << endl;*/
 	}
 
 }
@@ -752,6 +705,12 @@ void Student_analy::face_vote(Mat &image_1080, int &max_student_num){
 					match_file.open(mf,ios::app);
 					match_file << "人脸 " << students_all[student_valid[j]][0].matching_at_end << " --- 位置 " << student_valid[j] << endl;*/
 
+
+					if (students_all[student_valid[j]][0].matching_at_end == student_valid[j]){
+						rectangle(location_pic, students_all[student_valid[j]][0].body_bbox, Scalar(0, 255, 0), 2);
+						cv::putText(location_pic, to_string(student_valid[j]), students_all[student_valid[j]][0].loc, FONT_HERSHEY_COMPLEX, 0.7, Scalar(0, 255, 0), 2);
+					}
+
 				}
 				else{
 					students_all[student_valid[j]][0].matching.erase(students_all[student_valid[j]][0].matching.begin());
@@ -761,6 +720,7 @@ void Student_analy::face_vote(Mat &image_1080, int &max_student_num){
 
 		//}
 	}
+	imwrite("../match_pic.jpg",location_pic);
 	cout<< "当前帧匹配人数/总人数: " << matching_num << " / " << max_student_num << endl;
 	cout<< "============================================================" << endl;
 }
@@ -809,7 +769,6 @@ void Student_analy::add_match(int &location_num,int &face_num){
 
 void Student_analy::clear(){
 	n = 0;
-	n1 = 0;
 	student_valid.clear();
 	for (int i = 0; i < 70; i++){
 		students_all[i].clear();

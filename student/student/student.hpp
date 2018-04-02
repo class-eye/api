@@ -94,8 +94,9 @@ private:
 	vector<vector<FaceInfo>>standard_faces;
 	
 	int n=0;
-	int n1=0;
+	
 	int save_num = 3;
+	Mat location_pic;
 	
 	Net *posenet;
 	Net *handsnet;
