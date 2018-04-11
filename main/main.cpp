@@ -13,7 +13,7 @@
 #include<tuple>
 #include "../student/student/rfcn.hpp"
 #include "../student/student/yolov3.hpp"
-//#include "../mysql/MyDB.h"
+#include "../MyDB/MyDB.h"
 
 using namespace std;
 using namespace cv;
@@ -32,6 +32,40 @@ void initValue(int &n, int &max_student_num, vector<Class_Info>&class_info_all, 
 }
 
 //-------------------------------------------------OpenCV------------------------------------------------------
+
+void draw_pose(Net &net, Mat &image){
+	PoseInfo pose;
+	//Mat img;
+	//resize(image, img, Size(0, 0), 2 / 3., 2 / 3.);
+	pose_detect(net, image, pose);
+	int color[18][3] = { { 255, 0, 0 }, { 255, 85, 0 }, { 255, 0, 0 }, { 0, 255, 0 }, { 0, 0, 255 }, { 255, 0, 0 }, { 0, 255, 0 }, { 0, 0, 255 }, { 0, 255, 170 }, { 0, 255, 255 }, { 0, 170, 255 }, { 0, 255, 170 }, { 0, 255, 255 }, { 0, 170, 255 }, { 170, 0, 255 }, { 170, 0, 255 }, { 255, 0, 170 }, { 255, 0, 170 } };
+	int x[18];
+	int y[18];
+	cout << pose.subset.size() << endl;
+	for (int i = 0; i < pose.subset.size(); i++){
+		float score = float(pose.subset[i][18]) / pose.subset[i][19];
+		if (pose.subset[i][19] >= 4 && score >= 0.4){
+			for (int j = 0; j < 8; j++){
+				if (pose.subset[i][j] == -1){
+					x[j] = 0;
+					y[j] = 0;
+				}
+				else{
+					x[j] = pose.candicate[pose.subset[i][j]][0];
+					y[j] = pose.candicate[pose.subset[i][j]][1];
+				}
+			}
+		}
+		for (int j = 0; j < 8; j++){
+			if (!(x[j] || y[j])){
+				continue;
+			}
+			else{
+				cv::circle(image, Point2f(x[j], y[j]), 3, cv::Scalar(color[j][0], color[j][1], color[j][2]), -1);
+			}
+		}
+	}
+}
 
 int main(){
 	//54_chinese_1102_4_0.mp4   202Ö¡   54¸öÈË
@@ -52,35 +86,46 @@ int main(){
 	detector.SetMinSize(20);
 	detector.SetStageThresholds(0.5, 0.4, 0.55);*/
 
-	std::string  cfg_file = "/home/liaowang/darknet/cfg/yolov3.cfg";
-	std::string  weights_file = "/home/liaowang/darknet/cfg/yolov3.weights";
-	Detector yolo_detector(cfg_file, weights_file);
+	if (caffe::GPUAvailable()){
+		cout << "GPU Mode" << endl;
+		caffe::SetMode(caffe::GPU, 0);
+	}
+	std::string  cfg_file = "../yolov3.cfg";
+	std::string  weights_file = "../yolov3.weights";
+	Detector yolo_detector(cfg_file, weights_file,0);
+
+	Net net("../models/pose_deploy.prototxt");
+	net.CopyTrainedLayersFrom("../models/pose_iter_440000.caffemodel");
 
 	string imgdir = "../input_test/";
 	string output = "../output2";
 	Rect box(0, 0, 0, 0);
 
 	/*cout << "0 done" << endl;
-	pyMyDB pyDB("localhost", "root", "liuwentong","eye", 3306);
-	cout << "0.5 done" << endl;
-	pyDB.updateStudentFacePic(1, 2, "/home/lw/1.jpg");
+	pyMyDB pyDB("192.168.66.12", "root", "wst123456","intelleye", 3306);
+	cout << "0.6 done" << endl;
+	pyDB.updateStudentFacePic(1, 2, "../output2/00.jpg");
 	cout << "1 done" << endl;
-	pyDB.updateStudentFacePic(2, 3, "/home/lw/2.jpg");
-	cout << "2 done" << endl;
-	pyDB.updateStudentFacePic(4, 5, "/home/lw/3.jpg");
-	cout << "3 done" << endl;*/
+	pyDB.updateStudentFacePic(4, 5, "../output2/02.jpg");
+	cout << "3 done" << endl;
+	pyDB.updateClassroomPic(2, "../output2/01.jpg");
+	cout << "2 done" << endl;*/
+	
 
 #if 1
-	
-	string imgdir1 = "/home/liaowang/student_api/inputimg/";
+	Mat img;
+	string imgdir1 = "/home/lw/student_api/inputimg_1080/";
 	vector<string>imagelist = fs::ListDir(imgdir1, { "jpg" });
-	for (int i = 5; i < imagelist.size(); i++){
+	for (int i = 50; i < imagelist.size(); i++){
 		string imagep = imgdir1 + imagelist[i];
 		cout << imagep << endl;
 		Mat image = imread(imagep);
-		yolo_detect(yolo_detector, image);
-		string out = "../yolov3_out/" + to_string(i) + ".jpg";
-		imwrite(out, image);
+		image.copyTo(img);
+		//resize(image, image, Size(0, 0), 2 / 3., 2 / 3.);	
+		yolo_detect(yolo_detector, image,i);
+		draw_pose(net, img);
+		string out = "../yolov3_out/" + to_string(i) + "_pose.jpg";
+		imwrite(out, img);
 	}
 #endif
 
