@@ -1,3 +1,5 @@
+#ifndef _TIMER_H_
+#define _TIMER_H_
 #include <chrono>
 #include <time.h>
 #include <sys/types.h>
@@ -30,3 +32,4 @@ private:
 	vector<time_record>record_pair;
 
 };
+#endif

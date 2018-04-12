@@ -13,7 +13,7 @@
 #include<tuple>
 #include "../student/student/rfcn.hpp"
 #include "../student/student/yolov3.hpp"
-#include "../MyDB/MyDB.h"
+//#include "../MyDB/MyDB.h"
 
 using namespace std;
 using namespace cv;
@@ -85,14 +85,14 @@ int main(){
 	detector.SetMaxImageSize(3000);
 	detector.SetMinSize(20);
 	detector.SetStageThresholds(0.5, 0.4, 0.55);*/
-
+	int gpu_device = 1;
 	if (caffe::GPUAvailable()){
 		cout << "GPU Mode" << endl;
-		caffe::SetMode(caffe::GPU, 0);
+		caffe::SetMode(caffe::GPU, gpu_device);
 	}
 	std::string  cfg_file = "../yolov3.cfg";
 	std::string  weights_file = "../yolov3.weights";
-	Detector yolo_detector(cfg_file, weights_file,0);
+	Detector yolo_detector(cfg_file, weights_file, gpu_device);
 
 	Net net("../models/pose_deploy.prototxt");
 	net.CopyTrainedLayersFrom("../models/pose_iter_440000.caffemodel");
@@ -114,7 +114,7 @@ int main(){
 
 #if 1
 	Mat img;
-	string imgdir1 = "/home/lw/student_api/inputimg_1080/";
+	string imgdir1 = "/home/lw/student_api/inputimg/";
 	vector<string>imagelist = fs::ListDir(imgdir1, { "jpg" });
 	for (int i = 50; i < imagelist.size(); i++){
 		string imagep = imgdir1 + imagelist[i];

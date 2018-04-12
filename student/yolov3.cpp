@@ -22,6 +22,7 @@ using namespace std;
 using namespace cv;
 
 Rect mapping(Rect &rect_ori, Rect &image_rect){
+
 	Rect map_result;
 	map_result.x = rect_ori.x + image_rect.x;
 	map_result.y = rect_ori.y + image_rect.y;
@@ -30,28 +31,45 @@ Rect mapping(Rect &rect_ori, Rect &image_rect){
 	return map_result;
 }
 
-void Re_dup(vector<bbox_t>&a, vector<bbox_t>&b){
+void mapping(std::vector<bbox_t>&result_vec, Rect &image_rect){
+	for (int i = 0; i < result_vec.size(); i++){
+		if (result_vec[i].obj_id == 0){
+			result_vec[i].x += image_rect.x;
+			result_vec[i].y += image_rect.y;
+		}
+	}
+}
+
+void de_dup(vector<bbox_t>&a, vector<bbox_t>&b){
 	for (auto itera = a.begin(); itera != a.end();){
 		if ((*itera).obj_id == 0){
-			Rect recta((*itera).x, (*itera).y, (*itera).w, (*itera).h);
+			Rect recta((*itera).x, (*itera).y, (*itera).w, (*itera).h);	
 			for (auto iterb = b.begin(); iterb != b.end(); iterb++){
+				//cout << "go" << endl;			
 				if ((*iterb).obj_id == 0){
-					Rect rectb((*iterb).x, (*iterb).y, (*iterb).w, (*iterb).h);
-					float IOU = Compute_IOU(recta, rectb);
-					if (IOU > 0){
-						float area = 0;
-						if ((*itera).w*(*itera).h >= (*iterb).w*(*iterb).h){
-							area = (*iterb).w*(*iterb).h;
-							if (IOU / area > 0.8){
-								b.erase(iterb);
-								iterb--;
+					if (itera != a.end()){
+						Rect rectb((*iterb).x, (*iterb).y, (*iterb).w, (*iterb).h);
+						float IOU = Compute_IOU_area(recta, rectb);
+						if (IOU > 0){
+							float area = 0;
+							if ((*itera).w*(*itera).h >= (*iterb).w*(*iterb).h){
+								area = (*iterb).w*(*iterb).h;
+								if (IOU / area > 0.7){
+									b.erase(iterb);
+									itera--;
+									//cout << "delete b" << endl;
+									break;
+								}
 							}
-						}
-						else{
-							area = (*itera).w*(*itera).h;
-							if (IOU / area > 0.8){
-								a.erase(itera);
-								iterb = b.begin();
+							else{
+								area = (*itera).w*(*itera).h;
+								if (IOU / area > 0.7){
+									a.erase(itera);
+									//cout << "delete a" << endl;
+									itera--;
+									break;
+								}
+
 							}
 
 						}
@@ -65,15 +83,16 @@ void Re_dup(vector<bbox_t>&a, vector<bbox_t>&b){
 	}
 }
 
-void draw_boxes(cv::Mat mat_img, std::vector<bbox_t> result_vec,cv::Scalar color,Rect &rect_image)
+void draw_boxes(cv::Mat mat_img, std::vector<bbox_t> result_vec,cv::Scalar color)
 {
 	//int const colors[6][3] = { { 1, 0, 1 }, { 0, 0, 1 }, { 0, 1, 1 }, { 0, 1, 0 }, { 1, 1, 0 }, { 1, 0, 0 } };
 
 	for (auto &i : result_vec) {
 		if (i.obj_id == 0) {
+			if ((float(i.w) / i.h > 2.5) || (float(i.h) / i.w > 2.5))continue;
 			Rect rect_ori = cv::Rect(i.x, i.y, i.w, i.h);
-			Rect rect = mapping(rect_ori, rect_image);
-			cv::rectangle(mat_img, rect, color, 2);
+			//Rect rect = mapping(rect_ori, rect_image);
+			cv::rectangle(mat_img, rect_ori, color, 2);
 			//cv::Scalar color = color;
 			//cv::rectangle(mat_img, cv::Rect(i.x, i.y, i.w, i.h), color, 2);
 			/*std::string obj_name = "person";
@@ -114,11 +133,12 @@ void yolo_detect(Detector &detector,cv::Mat &image,int &i){
 	vector<bbox_t>result_vec1;
 	vector<bbox_t>result_vec2;
 	vector<bbox_t>result_vec3;
+	vector<bbox_t>result_vec4;
 
-	Rect rect1(0, 0, image.size().width / 2+100, image.size().height / 2+100);
-	Rect rect2(0, image.size().height / 2-100, image.size().width / 2+100, image.size().height / 2 +99);
-	Rect rect3(image.size().width / 2-100, 0, image.size().width / 2 - 1+100, image.size().height / 2+100);
-	Rect rect4(image.size().width / 2, image.size().height / 2, image.size().width / 2 - 1, image.size().height / 2 - 1);
+	Rect rect1(0, 0, image.size().width / 2+100, image.size().height / 2+100);     //left-top
+	Rect rect2(0, image.size().height / 2-100, image.size().width / 2+100, image.size().height / 2 +99);    //left-bottom
+	Rect rect3(image.size().width / 2-100, 0, image.size().width / 2 - 1+100, image.size().height / 2+100);        //right-top
+	Rect rect4(image.size().width / 2-100, image.size().height / 2-100, image.size().width / 2 - 1+100, image.size().height / 2 - 1+100);   //right-bottom
 	Mat image1;
 	image(rect1).copyTo(image1);
 	Mat image2;
@@ -138,21 +158,38 @@ void yolo_detect(Detector &detector,cv::Mat &image,int &i){
 	/*result_vec = detector.detect(image, 0.4);
 	draw_boxes(image, result_vec, cv::Scalar(0, 0, 255));
 	imwrite(s0, image);*/
-	result_vec1 = detector.detect(image1,0.4);
+	result_vec1 = detector.detect(image1,0.5);
 	//draw_boxes(image, result_vec1,cv::Scalar(0,0,255),rect1);
 	//imwrite(s1, image1);
-	result_vec2 = detector.detect(image2,0.4);
+	result_vec2 = detector.detect(image2,0.5);
 	//draw_boxes(image, result_vec2, cv::Scalar(0, 255, 0),rect2);
 	//imwrite(s2, image2);
-	result_vec3 = detector.detect(image3, 0.4);
+	result_vec3 = detector.detect(image3, 0.5);
 	//draw_boxes(image, result_vec3, cv::Scalar(255, 0, 0),rect3);
 	//imwrite(s3, image3);
-	//result_vec = detector.detect(image4, 0.4);
+	result_vec4 = detector.detect(image4, 0.5);
 	//draw_boxes(image4, result_vec, cv::Scalar(255, 0, 0));
 	//imwrite(s4, image4);
+	mapping(result_vec1, rect1);
+	mapping(result_vec2, rect2);
+	mapping(result_vec3, rect3);
+	mapping(result_vec4, rect4);
+	/*Mat im;
+	image.copyTo(im);*/
+	//de_dup(result_vec1,result_vec2);
+	de_dup(result_vec1, result_vec3);
+	de_dup(result_vec1, result_vec2);
+	de_dup(result_vec2, result_vec4);
+	de_dup(result_vec3, result_vec4);
+	de_dup(result_vec1, result_vec4);
+	de_dup(result_vec2, result_vec3);
 	
-	
-
+	//de_dup(result_vec2, result_vec3);
+	draw_boxes(image, result_vec1, cv::Scalar(0, 0, 255));
+	draw_boxes(image, result_vec2, cv::Scalar(0, 255, 0));
+	draw_boxes(image, result_vec3, cv::Scalar(255, 0, 0));
+	draw_boxes(image, result_vec4, cv::Scalar(0, 255, 255));
+	//rectangle(image, rect3, Scalar(0, 255, 255));
 	imwrite(s0, image);
 	/*int count = 0;
 	for (auto i : result_vec){

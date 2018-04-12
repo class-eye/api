@@ -285,7 +285,7 @@ private:
 //	}
 //};
 
-void yolo_detect(Detector &detector, cv::Mat &image);
+void yolo_detect(Detector &detector, cv::Mat &image,int &i);
 //extern "C" {
 
 #endif	// __cplusplus

@@ -16,6 +16,7 @@ int cosDistance(const cv::Mat q, const cv::Mat r, float& distance);
 float euDistance(Point2f q, Point2f r);
 int featureCompare(const std::vector<float> query_feature, const std::vector<float> ref_feature, float& distance);
 float Compute_IOU(const cv::Rect& rectA, const cv::Rect& rectB);
+float Compute_IOU_area(const cv::Rect& rectA, const cv::Rect& rectB);
 bool greate2(vector<float>a, vector<float>b);
 bool greate3(Student_Info a, Student_Info b);
 void writeJson(vector<int>&student_valid, vector<vector<Student_Info>>&students_all, vector<Class_Info>&class_info_all, string &videoname,int &n);
