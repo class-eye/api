@@ -12,7 +12,8 @@
 #include "../student/student/functions.hpp"
 #include<tuple>
 #include "../student/student/rfcn.hpp"
-#include "../student/student/yolov3.hpp"
+#include "../student/student/ssh_face.hpp"
+//#include "../student/student/yolov3.hpp"
 //#include "../MyDB/MyDB.h"
 
 using namespace std;
@@ -70,22 +71,26 @@ void draw_pose(Net &net, Mat &image){
 int main(){
 	//54_chinese_1102_4_0.mp4   202帧   54个人
 	//ch01_00000000072000000.mp4  99帧  56个人
-	int max_student_num = 35;
+	int max_student_num = 50;
 	std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>student_info;
 	
 
-	/*Student_analy student("../models/pose_deploy.prototxt", "../models/pose_iter_440000.caffemodel",
-						  "../models/handsnet.prototxt", "../models/handsnet_iter_12000.caffemodel", 
-						  "../models/face.prototxt", "../models/face.caffemodel", 
-						  "../models/facefeature.prototxt", "../models/facefeature.caffemodel",
-						  "../models/deploy_simple.prototxt", "../models/eight_net_iter_2626.caffemodel", 0);
-						
+	//Student_analy student("../models/pose_deploy.prototxt", "../models/pose_iter_440000.caffemodel",
+	//	//"/home/liaowang/pose/train/pose_deploy_resnet_152_one.prototxt", "/home/liaowang/pose/model_one/resnet_pose_one_iter_275000.caffemodel",
+	//					  "../../hands_classify/mxhandnet.prototxt", "../../hands_classify/mxhandnet.caffemodel",
+	//					  /*"../models/handsnet.prototxt", "../models/handsnet_iter_12000.caffemodel",*/
+	//					  "../models/face.prototxt", "../models/face.caffemodel", 
+	//					  "../models/facefeature.prototxt", "../models/facefeature.caffemodel",
+	//					  "../models/deploy_simple.prototxt", "../models/eight_net_iter_2626.caffemodel", 0);
 	jfda::JfdaDetector detector("../models/p.prototxt", "../models/p.caffemodel", "../models/r.prototxt", "../models/r.caffemodel", \
-		"../models/o.prototxt", "../models/o.caffemodel", "../models/l.prototxt", "../models/l.caffemodel");
+		"../models/o.prototxt", "../models/o.caffemodel", "../models/l.prototxt", "../models/l.caffemodel",0);
 	detector.SetMaxImageSize(3000);
 	detector.SetMinSize(20);
-	detector.SetStageThresholds(0.5, 0.4, 0.55);*/
-	int gpu_device = 1;
+	detector.SetStageThresholds(0.5, 0.4, 0.55);
+
+
+
+	/*int gpu_device = 1;
 	if (caffe::GPUAvailable()){
 		cout << "GPU Mode" << endl;
 		caffe::SetMode(caffe::GPU, gpu_device);
@@ -95,9 +100,9 @@ int main(){
 	Detector yolo_detector(cfg_file, weights_file, gpu_device);
 
 	Net net("../models/pose_deploy.prototxt");
-	net.CopyTrainedLayersFrom("../models/pose_iter_440000.caffemodel");
+	net.CopyTrainedLayersFrom("../models/pose_iter_440000.caffemodel");*/
 
-	string imgdir = "../input_test/";
+	string imgdir = "/home/liaowang/student_api/input_test/";
 	string output = "../output2";
 	Rect box(0, 0, 0, 0);
 
@@ -112,7 +117,7 @@ int main(){
 	cout << "2 done" << endl;*/
 	
 
-#if 1
+#if 0
 	Mat img;
 	string imgdir1 = "/home/lw/student_api/inputimg/";
 	vector<string>imagelist = fs::ListDir(imgdir1, { "jpg" });
@@ -135,39 +140,140 @@ int main(){
 		fs::MakeDir(output);
 	}
 	int behavior_yes_or_no = 0;
-	for (int i = 640; i < imagelist.size(); i++){
+	SshFaceDetWorker ssh("/home/liaowang/api_student_class/models/ssh.prototxt", "/home/liaowang/api_student_class/models/ssh.caffemodel");
+	Config config;
+	ssh.SetConfig(config);
+	for (int i = 640; i < imagelist.size(); i++)
+	{
 
+		cout << i << endl;
 		string imagep = imgdir + imagelist[i];
 		Mat image = imread(imagep);
-		//if (i < 20){
-		PoseInfo pose1;
+
+		vector<BBox>res = ssh.detect(image, i);
+		for (int i = 0; i < res.size(); i++){
+			Rect face(res[i].x1, res[i].y1, res[i].x2 - res[i].x1, res[i].y2 - res[i].y1);
+			rectangle(image, face, Scalar(0, 0, 255), 2);
+		}
+		string output_c = "../inputimg/" + to_string(i) + ".jpg";
+		imwrite(output_c, image);
+		/*PoseInfo pose1;
 		cout << "processing: " << i << endl;
 
 
 		if (behavior_yes_or_no != 1){
-			behavior_yes_or_no = student.GetStandaredFeats(image, output, max_student_num,0);
+		behavior_yes_or_no = student.GetStandaredFeats(image, output, max_student_num,0);
 		}
 		else{
-			cout << "n1 Finish" << endl;
+		cout << "n1 Finish" << endl;
+		break;
+		}*/
+
+	}
+	//for (int i = 0; i < imagelist.size(); i++){
+	//	cout << "processing: " << i << endl;
+	//	string imagep = imgdir + imagelist[i];
+	//	Mat image = imread(imagep);
+	//	if (behavior_yes_or_no == 1){
+	//		student_info = student.student_detect(detector, image, output, max_student_num);
+	//	}
+	//	//student.good_face(detector,image,max_student_num,0);
+	//	//student.face_match(detector,image);
+	//	/*vector<vector<Student_Info>>students_all = get<0>(student_info);
+	//	vector<Class_Info>class_info_all = get<1>(student_info);*/
+	//}
+#endif
+
+#if 0
+	Timer timer;
+	string videopath = "/home/liaowang/api_student_class/ch01_00000000072000000.mp4";
+	cout << videopath << endl;
+
+	VideoCapture capture(videopath);
+	/*long frameToStart = 100 * 10;
+	capture.set(CV_CAP_PROP_POS_FRAMES, frameToStart);*/
+	if (!capture.isOpened())
+	{
+		printf("video loading fail");
+		return 0;
+	}
+	long totalFrameNumber = capture.get(CV_CAP_PROP_FRAME_COUNT);
+	cout << "all " << totalFrameNumber << " frame" << endl;
+
+	/*SshFaceDetWorker::Config config;
+	config.min_size = 1200;
+	config.max_size = 1200;
+	config.square_box = false;
+	config.model_dir = "/home/liaowang/api_student_class/models";
+	config.net_prefix = "ssh";*/
+	//SshFaceDetWorker w(config);
+
+	SshFaceDetWorker ssh("/home/liaowang/api_student_class/models/ssh.prototxt","/home/liaowang/api_student_class/models/ssh.caffemodel");
+	Config config;
+	cout << config.max_size << " " << config.min_size << endl;
+	ssh.SetConfig(config);
+
+	//ssh.SetConfig(config);
+	//ssh.Initialize();
+	
+	//ssh.Deinitialize();
+
+
+
+	Mat frame;
+	int n = 0;
+	int behavior_yes_or_no = 0;
+	int finish = 0;
+	//std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>student_info;
+	while (true)
+	{
+
+		if (!capture.read(frame)){
+
 			break;
 		}
-	}
-	for (int i = 0; i < imagelist.size(); i++){
-		string imagep = imgdir + imagelist[i];
-		Mat image = imread(imagep);
-		if (behavior_yes_or_no == 1){
-			student_info = student.student_detect(detector, image, output, max_student_num);
-		}
-		student.good_face(detector,image,max_student_num,0);
-		student.face_match(detector,image);
-		/*vector<vector<Student_Info>>students_all = get<0>(student_info);
-		vector<Class_Info>class_info_all = get<1>(student_info);*/
-	}
-#endif
-#if 0
-	//-------------------------VIDEO---------------------------------------
+		if (n % 25 == 0){
+			//cv::resize(frame, frame, Size(0, 0), 2 / 3., 2 / 3.);
+			/*timer.Tic();
+			vector<BBox>res = ssh.detect(frame,n);
+			timer.Toc();
+			cout << "the " << n << " frame cost " << timer.Elasped() / 1000.0 << " s" << endl;
+			for (int i = 0; i < res.size(); i++){
+				Rect face(res[i].x1, res[i].y1, res[i].x2 - res[i].x1, res[i].y2 - res[i].y1);
+				rectangle(frame, face, Scalar(0, 0, 255),2);
+			}
+			string output_c = "../inputimg/" + to_string(n) + ".jpg";
+			imwrite(output_c, frame);*/
 
-	string videopath = "../sw180402_1_.mp4";
+			//cv::resize(frame, frame, Size(0, 0), 2 / 3., 2 / 3.);
+			vector<FaceInfoInternal>facem;
+			timer.Tic();
+			vector<FaceInfo> faces = detector.Detect(frame, facem);
+			timer.Toc();
+			cout << "the " << n << " frame cost " << timer.Elasped() / 1000.0 << " s" << endl;
+			for (int i = 0; i < faces.size(); i++){
+				rectangle(frame, faces[i].bbox, Scalar(0, 0, 255),2);
+			}
+			string output_c = "../inputimg1/" + to_string(n) + ".jpg";
+			imwrite(output_c, frame);
+
+		}
+		n++;
+	}
+	capture.release();
+#endif
+
+#if 1
+	//-------------------------VIDEO---------------------------------------
+	Timer timer;
+	string videopath = "/home/liaowang/api_student_class/ch01_00000000072000000.mp4";
+	cout << videopath << endl;
+
+	SshFaceDetWorker ssh("/home/liaowang/api_student_class/models/ssh.prototxt", "/home/liaowang/api_student_class/models/ssh.caffemodel");
+	Config config;
+	cout << config.max_size << " " << config.min_size << endl;
+	ssh.SetConfig(config);
+
 	/*string output = "";
 	int max_student_num = 0;*/
 	VideoCapture capture(videopath);
@@ -176,6 +282,7 @@ int main(){
 	if (!capture.isOpened())
 	{
 		printf("video loading fail");
+		return 0;
 	}
 	long totalFrameNumber = capture.get(CV_CAP_PROP_FRAME_COUNT);
 	cout << "all " << totalFrameNumber << " frame" << endl;
@@ -183,89 +290,102 @@ int main(){
 	Mat frame;
 	int n = 0;
 	int behavior_yes_or_no = 0;
+	int finish = 0;
 	//std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>student_info;
 	while (true)
 	{
-		
+
 		if (!capture.read(frame)){
-			
+
 			break;
 		}
 		/*if (n % 25 == 0){
-			string output_c = "/home/liaowang/student_api_no_Hik/inputimg/" + to_string(n) + ".jpg";
+			string output_c = "../inputimg/" + to_string(n) + ".jpg";
 			imwrite(output_c, frame);
-		}*/
-		if (behavior_yes_or_no != 1){
-			if (n % 10 == 0){
-				cout << "处理 " << n/10 << " 帧aaa" << endl;
-				behavior_yes_or_no = student.GetStandaredFeats(frame,output, max_student_num, 0);
-			}
-		}
-		else{
-			if (n % 10 == 0){
-				student_info = student.student_detect(detector, frame, output, max_student_num);
-				int finish=student.good_face(detector, frame, max_student_num, 0);
+			}*/
+		//if (behavior_yes_or_no != 1){
+		//	if (n % 25 == 0){
+		//		//cout << "processing " << n/25 << " frame" << endl;
+		//		behavior_yes_or_no = student.GetStandaredFeats(frame,output, max_student_num, 0);
+		//	}
+		//}
+		//else{
+		//	if (n % 25 == 0){
+		//		student_info = student.student_detect(detector, frame, output, max_student_num);
+		//		if (finish != 1){
+		//			finish = student.good_face(detector, frame, max_student_num, 0);
+		//		}
+		//		if (finish == 1){
+		//			student.face_match(detector, frame, max_student_num, 0);
+		//			//student.face_vote(frame, max_student_num);
+		//		}
+		//	}
+		//}
 
-				if (finish == 1){
-					student.face_match(detector, frame, max_student_num, 0);
-					//student.face_vote(frame, max_student_num);
-				}
+		if (n % 25 == 0){
+			if (finish != 1){
+				finish = student.good_face(detector, frame, max_student_num, 0);
+			}
+			if (finish == 1){
+				student.face_match(detector, frame, max_student_num, 0);
+				//student.face_vote(frame, max_student_num);
 			}
 		}
+
 		n++;
 		/*if (n == 2000)
 		{
-			cout << "------------------------------下一个视频--------------------------------------" << endl;
-			break;
+		cout << "------------------------------下一个视频--------------------------------------" << endl;
+		break;
 		}*/
 	}
 	capture.release();
 
-	max_student_num = 32;
-	string videopath1 = "../sw180402_2.mp4";
-	//max_student_num = 52;
-	VideoCapture capture1(videopath1);
-	/*long frameToStart = 45 * 25;
-	capture.set(CV_CAP_PROP_POS_FRAMES, frameToStart);*/
-	if (!capture1.isOpened())
-	{
-		printf("video loading fail");
-	}
-	totalFrameNumber = capture1.get(CV_CAP_PROP_FRAME_COUNT);
-	cout << "all " << totalFrameNumber << " frame" << endl;
-	n = 0;
-	behavior_yes_or_no = 0;
-	//std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>student_info;
-	student.clear();
-	while (true)
-	{
-		if (!capture1.read(frame)){
-			break;
-		}
-		/*if (n % 25 == 0){
-		string output_c = "/home/liaowang/student_api_no_Hik/inputimg/" + to_string(n) + ".jpg";
-		imwrite(output_c, frame);
-		}*/
+	//max_student_num = 32;
+	//string videopath1 = "../sw180402_2.mp4";
+	////max_student_num = 52;
+	//VideoCapture capture1(videopath1);
+	///*long frameToStart = 45 * 25;
+	//capture.set(CV_CAP_PROP_POS_FRAMES, frameToStart);*/
+	//if (!capture1.isOpened())
+	//{
+	//	printf("video loading fail");
+	//}
+	//totalFrameNumber = capture1.get(CV_CAP_PROP_FRAME_COUNT);
+	//cout << "all " << totalFrameNumber << " frame" << endl;
+	//n = 0;
+	//behavior_yes_or_no = 0;
+	////std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>student_info;
+	//student.clear();
+	//while (true)
+	//{
+	//	if (!capture1.read(frame)){
+	//		break;
+	//	}
+	//	/*if (n % 25 == 0){
+	//	string output_c = "/home/liaowang/student_api_no_Hik/inputimg/" + to_string(n) + ".jpg";
+	//	imwrite(output_c, frame);
+	//	}*/
 
-		
+	//	
 
-		if (behavior_yes_or_no != 1){
-			if (n % 10 == 0){
-				cout << "处理 " << n / 10 << " 帧bbb" << endl;
-				behavior_yes_or_no = student.GetStandaredFeats(frame, output, max_student_num, 0);
-			}
-		}
-		else{
-			if (n % 10 == 0){
-				student_info = student.student_detect(detector, frame, output, max_student_num);
-				/*if (finish == 1)*/student.face_match(detector, frame, max_student_num, 0);
-				student.face_vote(frame, max_student_num);
-			}
-		}
-		n++;
-	
-	}
-	capture1.release();
+	//	if (behavior_yes_or_no != 1){
+	//		if (n % 25 == 0){
+	//			cout << "处理 " << n / 25 << " 帧bbb" << endl;
+	//			behavior_yes_or_no = student.GetStandaredFeats(frame, output, max_student_num, 0);
+	//		}
+	//	}
+	//	else{
+	//		if (n % 25 == 0){
+	//			student_info = student.student_detect(detector, frame, output, max_student_num);
+	//			/*if (finish == 1)*/student.face_match(detector, frame, max_student_num, 0);
+	//			student.face_vote(frame, max_student_num);
+	//		}
+	//	}
+	//	n++;
+	//
+	//}
+	//capture1.release();
 
 #endif
 }
