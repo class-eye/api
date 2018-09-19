@@ -73,21 +73,21 @@ int main(){
 	//ch01_00000000072000000.mp4  99Ö¡  56¸öÈË
 	int max_student_num = 50;
 	std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>student_info;
-	
+	int gpu_id = 1;
 
 	//Student_analy student("../models/pose_deploy.prototxt", "../models/pose_iter_440000.caffemodel",
-	//	//"/home/liaowang/pose/train/pose_deploy_resnet_152_one.prototxt", "/home/liaowang/pose/model_one/resnet_pose_one_iter_275000.caffemodel",
+	//	//"/home/liaowang/pose/train/pose_deploy_resnet_50_1.prototxt", "/home/liaowang/pose/model_one/resnet50_pose_8_iter_300000.caffemodel",
 	//					  "../../hands_classify/mxhandnet.prototxt", "../../hands_classify/mxhandnet.caffemodel",
 	//					  /*"../models/handsnet.prototxt", "../models/handsnet_iter_12000.caffemodel",*/
 	//					  "../models/face.prototxt", "../models/face.caffemodel", 
 	//					  "../models/facefeature.prototxt", "../models/facefeature.caffemodel",
-	//					  "../models/deploy_simple.prototxt", "../models/eight_net_iter_2626.caffemodel", 0);
+	//					  "../models/deploy_simple.prototxt", "../models/eight_net_iter_2626.caffemodel", gpu_id);
+
 	jfda::JfdaDetector detector("../models/p.prototxt", "../models/p.caffemodel", "../models/r.prototxt", "../models/r.caffemodel", \
-		"../models/o.prototxt", "../models/o.caffemodel", "../models/l.prototxt", "../models/l.caffemodel",0);
+		"../models/o.prototxt", "../models/o.caffemodel", "../models/l.prototxt", "../models/l.caffemodel", gpu_id);
 	detector.SetMaxImageSize(3000);
 	detector.SetMinSize(20);
 	detector.SetStageThresholds(0.5, 0.4, 0.55);
-
 
 
 	/*int gpu_device = 1;
@@ -266,11 +266,14 @@ int main(){
 #if 1
 	//-------------------------VIDEO---------------------------------------
 	Timer timer;
-	string videopath = "/home/liaowang/api_student_class/ch01_00000000072000000.mp4";
+	string videopath = "../video/ch01_00000000072000000.mp4";
 	cout << videopath << endl;
 
-	SshFaceDetWorker ssh("/home/liaowang/api_student_class/models/ssh.prototxt", "/home/liaowang/api_student_class/models/ssh.caffemodel");
+	SshFaceDetWorker ssh("../models/ssh.prototxt", "../models/ssh.caffemodel",
+		"../models/deploy_simple.prototxt", "../models/eight_net_iter_2626.caffemodel",
+		"../models/facefeature.prototxt", "../models/facefeature.caffemodel");
 	Config config;
+	config.gpu_id = gpu_id;
 	cout << config.max_size << " " << config.min_size << endl;
 	ssh.SetConfig(config);
 
@@ -291,6 +294,7 @@ int main(){
 	int n = 0;
 	int behavior_yes_or_no = 0;
 	int finish = 0;
+	int good_face_finish = 0;
 	//std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>student_info;
 	while (true)
 	{
@@ -305,7 +309,7 @@ int main(){
 			}*/
 		//if (behavior_yes_or_no != 1){
 		//	if (n % 25 == 0){
-		//		//cout << "processing " << n/25 << " frame" << endl;
+		//		cout << "processing " << n/25 << " frame" << endl;
 		//		behavior_yes_or_no = student.GetStandaredFeats(frame,output, max_student_num, 0);
 		//	}
 		//}
@@ -323,13 +327,16 @@ int main(){
 		//}
 
 		if (n % 25 == 0){
-			if (finish != 1){
-				finish = student.good_face(detector, frame, max_student_num, 0);
+			vector<BBox>faces = ssh.detect(frame);
+			if (faces.size() >= max_student_num && finish==0){
+				ssh.GetStandaredFeats_ssh(faces, detector, frame);
+				finish = 1;
 			}
-			if (finish == 1){
-				student.face_match(detector, frame, max_student_num, 0);
-				//student.face_vote(frame, max_student_num);
+			else if (finish == 1 && good_face_finish==0){
+				good_face_finish=ssh.good_face_ssh(faces, detector, frame);
 			}
+			
+			
 		}
 
 		n++;

@@ -19,7 +19,7 @@
 using namespace cv;
 using namespace std;
 using namespace caffe;
-
+using namespace fs;
 int standard_frame = 1;
 
 Student_analy::Student_analy(const string& pose_net, const string& pose_model,
@@ -68,7 +68,7 @@ std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>Student_analy::stude
 		cv::resize(image_1080, image, Size(0, 0), 2 / 3., 2 / 3.);
 		//timer.Tic();
 		PoseInfo pose;
-		//timer.Tic();
+		timer.Tic();
 		pose_detect(*posenet, image, pose);
 		//timer.Toc();
 		//cout << "pose detect cost " << timer.Elasped() / 1000.0 << " s" << endl;
@@ -210,15 +210,14 @@ std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>Student_analy::stude
 					}
 				}
 
-				/*for (int j = 0; j < 8; j++){
-				if (!(x[j] || y[j])){
-				continue;
+				for (int j = 0; j < 8; j++){
+					if (!(x[j] || y[j])){
+						continue;
+					}
+					else{
+						cv::circle(image, Point2f(x[j], y[j]), 3, cv::Scalar(color[j][0], color[j][1], color[j][2]), -1);
+					}
 				}
-				else{
-				cv::circle(image, Point2f(x[j], y[j]), 3, cv::Scalar(color[j][0], color[j][1], color[j][2]), -1);
-				}
-				}*/
-
 			} //if (pose.subset[i][19] >= 3 && score >= 0.4) end
 		}//for (int i = 0; i < pose.subset.size(); i++) end
 
@@ -239,11 +238,12 @@ std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>Student_analy::stude
 		}*/
 
 		//drawGrid(image,student_valid,students_all);
-		//string output1;
-		//output1 = output + "/" + to_string(n) + ".jpg";
-		//cv::imwrite(output1, image);
-		/*timer.Toc();
-		cout << "the " << n << " frame cost " << timer.Elasped() / 1000.0 << " s" << endl;*/
+		timer.Toc();
+		cout << "the " << n << " frame cost " << timer.Elasped() / 1000.0 << " s" << endl;
+		string output1;
+		output1 = output + "/" + to_string(n) + ".jpg";
+		cv::imwrite(output1, image);
+		
 		n++;
 	} //if (n % standard_frame == 0) end
 	return std::make_tuple(students_all, class_info_all);
@@ -259,7 +259,7 @@ int Student_analy::GetStandaredFeats(Mat &frame_1080, string &output, int &max_s
 			pose_detect(*posenet, frame, pose);
 			int stu_n = 0;
 			int stu_real = 0;
-
+			
 			for (int i = 0; i < pose.subset.size(); i++){
 				float score = float(pose.subset[i][18]) / pose.subset[i][19];
 				if (pose.subset[i][19] >= 4 && score >= 0.4){
@@ -415,7 +415,7 @@ int Student_analy::GetStandaredFeats(Mat &frame_1080, string &output, int &max_s
 				return 1;
 				//}
 			}
-			else{ cout << "找到学生数量: " << stu_n << endl; }
+			else{ cout << "find students: " << stu_n << endl; }
 			/*if (n1 < 1){
 				if (n > 5){
 					cout << "是否需要重新获取学生位置？ 按c继续，按r重新开始" << endl;
@@ -436,6 +436,7 @@ int Student_analy::GetStandaredFeats(Mat &frame_1080, string &output, int &max_s
 }
 int Student_analy::good_face(jfda::JfdaDetector &detector, Mat &image_1080, int &max_student_num, int stop){
 	if (stop == 0){
+		Timer timer;
 		//if (standard_faces.size() < max_student_num){
 		//string output2 = "../output2/" + to_string(n) + ".jpg";
 		//if (standard_faces.size() < max_student_num){
@@ -443,12 +444,14 @@ int Student_analy::good_face(jfda::JfdaDetector &detector, Mat &image_1080, int 
 		for (int i = 0; i < standard_faces.size(); i++){
 			if (!standard_faces[i].empty())face_size++;
 		}
-		cout << "处理第"<<n<<"帧,  "<< "标准库人脸数 / 总人数: " << face_size << " / " << max_student_num << endl;
+		cout << "processing "<<n<<" frame" << "standard face / all: " << face_size << " / " << max_student_num << endl;
 		//}
 		//if (face_size < max_student_num){
 			for (int j = 0; j < student_valid.size(); j++){
+				
 				//if (students_all[student_valid[j]][0].good_face_features.empty()){
-					if (students_all[student_valid[j]][0].cur_size != students_all[student_valid[j]].size()){
+					//if (students_all[student_valid[j]][0].cur_size != students_all[student_valid[j]].size()){
+						
 						students_all[student_valid[j]][0].cur_size = students_all[student_valid[j]].size();
 						if (students_all[student_valid[j]][students_all[student_valid[j]].size() - 1].face_bbox.width != 0){
 							Rect face_bbox_720 = students_all[student_valid[j]][students_all[student_valid[j]].size() - 1].face_bbox;
@@ -456,6 +459,7 @@ int Student_analy::good_face(jfda::JfdaDetector &detector, Mat &image_1080, int 
 							Mat faceimg = image_1080(face_bbox_1080);
 							vector<FaceInfoInternal>facem;
 							vector<FaceInfo> faces = detector.Detect(faceimg, facem);
+							
 							if (faces.size() == 1){
 								FaceInfo faceinfo = faces[0];
 								faceinfo.center.x = faceinfo.bbox.x + 0.5*faceinfo.bbox.width + face_bbox_1080.x;
@@ -512,7 +516,7 @@ int Student_analy::good_face(jfda::JfdaDetector &detector, Mat &image_1080, int 
 								Mat patch = CropPatch(faceimg, faceinfo.bbox);
 								faceimg.copyTo(faceinfo.img_face);
 								if (standard_faces[student_valid[j]].empty()) {
-									//if (real_sco > 0.0){				
+									//if (real_sco > 0.8){				
 										if (!fs::IsExists(output3)){
 											fs::MakeDir(output3);
 										}							
@@ -524,9 +528,8 @@ int Student_analy::good_face(jfda::JfdaDetector &detector, Mat &image_1080, int 
 
 								}
 								else{
-									
 									if (/*faceinfo.sco[0] >= standard_faces[student_valid[j]][0].sco[0] && */faceinfo.sco[1] >= standard_faces[student_valid[j]][0].sco[1]){
-										cout << "替换"<<student_valid[j] << endl;
+										//cout << "替换"<<student_valid[j] << endl;
 										faceinfo.path = output3;
 										Extract(*facefeature_net, faceimg, faceinfo);
 										standard_faces[student_valid[j]][0] = faceinfo;
@@ -536,8 +539,9 @@ int Student_analy::good_face(jfda::JfdaDetector &detector, Mat &image_1080, int 
 								}
 							}
 						}
-					}
+					//}
 				//}
+					
 			}
 		//}
 		//}
@@ -721,8 +725,8 @@ void Student_analy::face_vote(Mat &image_1080, int &max_student_num){
 		//}
 	}
 	imwrite("../match_pic.jpg",location_pic);
-	cout<< "当前帧匹配人数/总人数: " << matching_num << " / " << max_student_num << endl;
-	cout<< "============================================================" << endl;
+	/*cout<< "当前帧匹配人数/总人数: " << matching_num << " / " << max_student_num << endl;
+	cout<< "============================================================" << endl;*/
 }
 
 

@@ -1,6 +1,9 @@
-#include <numeric>
-#include <map>
+#include <fstream>
+#include <thread>
 #include <iostream>
+#include <numeric>
+#include <string>
+#include <map>
 #include <algorithm>
 #include "student/ssh_face.hpp"
 #include "caffe/caffe.hpp"
@@ -34,12 +37,12 @@ vector<int> NonMaximumSuppression(const vector<float>& scores,
 		for (ScoreMapper::iterator it = sm.begin(); it != sm.end();) {
 			int idx = it->second;
 			const BBox& curr = bboxes[idx];
-			float x1 = std::max(curr.x1, last.x1);
-			float y1 = std::max(curr.y1, last.y1);
-			float x2 = std::min(curr.x2, last.x2);
-			float y2 = std::min(curr.y2, last.y2);
-			float w = std::max(0.f, x2 - x1 + 1);
-			float h = std::max(0.f, y2 - y1 + 1);
+			float x1 = max(curr.x1, last.x1);
+			float y1 = max(curr.y1, last.y1);
+			float x2 = min(curr.x2, last.x2);
+			float y2 = min(curr.y2, last.y2);
+			float w = max(0.f, x2 - x1 + 1);
+			float h = max(0.f, y2 - y1 + 1);
 			float ov = (w*h) / (areas[idx] + areas[last_idx] - w*h);
 			if (ov > nms_th) {
 				ScoreMapper::iterator it_ = it;
@@ -60,7 +63,7 @@ void SqaureFaceBox(vector<BBox>& faces) {
 		float y_center = (face.y1 + face.y2) / 2;
 		float w = face.x2 - face.x1;
 		float h = face.y2 - face.y1;
-		float l = std::max(w, h);
+		float l = max(w, h);
 		face.x1 = x_center - l / 2;
 		face.y1 = y_center - l / 2;
 		face.x2 = x_center + l / 2;
@@ -112,8 +115,8 @@ void SshFaceDetWorker::SetConfig(Config config) {
 //}
 
 SshFaceDetWorker::SshFaceDetWorker(const string& ssh_net, const string &ssh_model,
-	const string& front_face_net, const string& front_face_model,
-	const string& real_front_face_net, const string& real_front_face_model)
+	const string& real_front_face_net, const string& real_front_face_model,
+	const string& face_feature_net, const string& face_feature_model)
 {
 	if (config_.gpu_id < 0) {
 		caffe::SetMode(caffe::CPU, -1);
@@ -130,17 +133,18 @@ SshFaceDetWorker::SshFaceDetWorker(const string& ssh_net, const string &ssh_mode
 	real_frontface_net = new caffe::Net(real_front_face_net);
 	real_frontface_net->CopyTrainedLayersFrom(real_front_face_model);
 
-	facefeature_net = new caffe::Net(real_front_face_net);
-	facefeature_net->CopyTrainedLayersFrom(real_front_face_model);
+	facefeature_net = new caffe::Net(face_feature_net);
+	facefeature_net->CopyTrainedLayersFrom(face_feature_model);
 }
 SshFaceDetWorker::~SshFaceDetWorker(){
 	delete net_; 
 	delete real_frontface_net;
 	delete facefeature_net;
+	caffe::MemPoolClear();
 }
 static float ComputeScaleFactor(int width, int height, int target_size, int max_size) {
-	int mmin = std::min(width, height);
-	int mmax = std::max(width, height);
+	int mmin = min(width, height);
+	int mmax = max(width, height);
 	float scale_factor = static_cast<float>(target_size) / mmin;
 	if (scale_factor * mmax > max_size) {
 		scale_factor = static_cast<float>(max_size) / mmax;
@@ -224,63 +228,110 @@ vector<BBox>SshFaceDetWorker::detect(cv::Mat img)
 
 }
 
-int SshFaceDetWorker::GetStandaredFeats_ssh(SshFaceDetWorker &ssh, jfda::JfdaDetector &detector, Mat &image_1080, int &max_student_num){
-	vector<BBox>faces = ssh.detect(image_1080);
-	if (faces.size() >= max_student_num){
-		cout << faces.size() << endl;
-		for (int i = 0; i < faces.size(); i++){
-			//用脸确定位置
-			FaceInfo face;
-			Rect bigger_face;
-			int width = faces[i].x2 - faces[i].x1;
-			int height = faces[i].y2 - faces[i].y1;
-			bigger_face.x = faces[i].x1 - width / 2;
-			bigger_face.y = faces[i].y1 - height / 2;
-			bigger_face.width = width * 2;
-			bigger_face.height = height * 2;
-			refine(bigger_face, image_1080);
-			face.bbox = bigger_face;
-			//得到正脸分数
-			Mat faceimg = image_1080(bigger_face);
-			vector<FaceInfoInternal>facem;
-			vector<FaceInfo> faces_jfda = detector.Detect(faceimg, facem);
-			if (faces.size() == 1){	
-				std::tuple<bool, float>real_front_face_or_not = real_front_face(*real_frontface_net, faceimg, faces_jfda[0].bbox);
-				face.sco[1] = get<1>(real_front_face_or_not);
-			}
-			//提取ssh人脸特征
-			Rect ssh_face(faces[i].x1, faces[i].y1, width, height);
-			Mat ssh_img = image_1080(ssh_face);
-			Extract(*facefeature_net, ssh_img, face);
+void SshFaceDetWorker::GetStandaredFeats_ssh(vector<BBox>faces, jfda::JfdaDetector &detector, Mat &image_1080){
+	Timer timer;
+	timer.Tic();
+	for (int i = 0; i < faces.size(); i++){
+		//用脸确定位置
+		
+		FaceInfo face;
+		Rect bigger_face;
+		int width = faces[i].x2 - faces[i].x1;
+		int height = faces[i].y2 - faces[i].y1;
+		bigger_face.x = faces[i].x1 - width / 2;
+		bigger_face.y = faces[i].y1 - height / 2;
+		bigger_face.width = width * 2;
+		bigger_face.height = height * 2;
+		Rect ssh_face(faces[i].x1, faces[i].y1, width, height);
+		refine(bigger_face, image_1080);
+		//rectangle(image_1080, bigger_face, Scalar(0, 0, 255), 2);		
+		//cv::putText(image_1080, to_string(i), Point(faces[i].x1, faces[i].y1), FONT_HERSHEY_COMPLEX, 0.7, Scalar(0, 255, 0), 2);
+		
+		face.bbox = bigger_face;
+		//得到正脸分数
+		Mat faceimg = image_1080(bigger_face);
+		
 
-			standard_faces.push_back(face);
+		vector<FaceInfoInternal>facem;
+		vector<FaceInfo> faces_jfda = detector.Detect(faceimg, facem);
+		if (faces_jfda.size() == 1){
+			std::tuple<bool, float>real_front_face_or_not = real_front_face(*real_frontface_net, faceimg, faces_jfda[0].bbox);
+			face.sco[1] = get<1>(real_front_face_or_not);
 		}
-		return 1;
+
+		/*std::tuple<bool, float>real_front_face_or_not = real_front_face(*real_frontface_net, faceimg, ssh_face);
+		face.sco[1] = get<1>(real_front_face_or_not);*/
+		//提取ssh人脸特征
+		
+		refine(ssh_face, image_1080);
+		Mat ssh_img = image_1080(ssh_face);
+		Extract(*facefeature_net, ssh_img, face);
+		standard_faces.push_back(face);
+		string output3 = "../standard_face/" + to_string(i);
+		if (!fs::IsExists(output3)){
+			fs::MakeDir(output3);
+		}
+		string output4 = output3 + "/" + to_string(i) + ".jpg";
+		cv::imwrite(output4, ssh_img);
 	}
-	return 0;
+	timer.Toc();
+	cout << "standard cost " << timer.Elasped() / 1000.0 << " s" << endl;
+	n++;
+	string output = "../standard"+to_string(n)+".jpg";
+	imwrite(output, image_1080);
+
 }
 
-int SshFaceDetWorker::good_face_ssh(SshFaceDetWorker &ssh, jfda::JfdaDetector &detector,Mat &image_1080, int &max_student_num){
-	vector<BBox>faces=ssh.detect(image_1080);
+int SshFaceDetWorker::good_face_ssh(vector<BBox>faces, jfda::JfdaDetector &detector, Mat &image_1080){
+	Timer timer;
+	timer.Tic();
 	for (int i = 0; i < faces.size(); i++){
 		Rect bigger_face;
 		int width = faces[i].x2 - faces[i].x1;
 		int height = faces[i].y2 - faces[i].y1;
-		bigger_face.x = faces[i].x1-width/2;
+		bigger_face.x = faces[i].x1 - width / 2;
 		bigger_face.y = faces[i].y1 - height / 2;
 		bigger_face.width = width * 2;
 		bigger_face.height = height * 2;
-
-		std::multimap<float, int,greater<float>>IOU_map;
-
-
-		Mat faceimg = image_1080(bigger_face);
-		vector<FaceInfoInternal>facem;
-		vector<FaceInfo> faces = detector.Detect(faceimg, facem);
-		if (faces.size() == 1){
-			FaceInfo faceinfo = faces[0];
-			std::tuple<bool, float>real_front_face_or_not = real_front_face(*real_frontface_net, faceimg, faceinfo.bbox);
-			float real_sco = get<1>(real_front_face_or_not);
-			string output1 = "../standard_face/";
+		Rect ssh_face(faces[i].x1, faces[i].y1, width, height);
+		refine(bigger_face, image_1080);
+		std::multimap<float, int, greater<float>>IOU_map;
+		for (int j = 0; j < standard_faces.size(); j++){
+			float cur_IOU = Compute_IOU(standard_faces[j].bbox, bigger_face);
+			IOU_map.insert(make_pair(cur_IOU, j));
 		}
+		if (IOU_map.begin()->first > 0){
+			Mat faceimg = image_1080(bigger_face);
+			vector<FaceInfoInternal>facem;
+			vector<FaceInfo> faces_jfda = detector.Detect(faceimg, facem);
+			if (faces_jfda.size() == 1){
+				FaceInfo faceinfo;
+				std::tuple<bool, float>real_front_face_or_not = real_front_face(*real_frontface_net, faceimg, faces_jfda[0].bbox);
+				float real_sco = get<1>(real_front_face_or_not);
+				//cout << real_sco << " ------ " << standard_faces[IOU_map.begin()->second].sco[1] << endl;
+				if (real_sco > standard_faces[IOU_map.begin()->second].sco[1]){
+					faceinfo.sco[1] = real_sco;
+					faceinfo.bbox = ssh_face;
+
+					cout << "replace " << IOU_map.begin()->second << endl;
+
+					Rect ssh_face(faces[i].x1, faces[i].y1, width, height);
+					refine(ssh_face, image_1080);
+					Mat ssh_img = image_1080(ssh_face);
+					Extract(*facefeature_net, ssh_img, faceinfo);
+					standard_faces[IOU_map.begin()->second] = faceinfo;
+
+					string output3 = "../standard_face/" + to_string(IOU_map.begin()->second);
+					string output4 = output3 + "/" + to_string(IOU_map.begin()->second) + "_" + to_string(n) + ".jpg";
+					cv::imwrite(output4, ssh_img);
+				}
+			}
+		}
+	
+	}
+	timer.Toc();
+	cout << "good face cost " << timer.Elasped() / 1000.0 << " s" << endl;
+	n++;
+	if (n > 120)return 1;
+	else return 0;
 }
