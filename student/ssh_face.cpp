@@ -116,7 +116,8 @@ void SshFaceDetWorker::SetConfig(Config config) {
 
 SshFaceDetWorker::SshFaceDetWorker(const string& ssh_net, const string &ssh_model,
 	const string& real_front_face_net, const string& real_front_face_model,
-	const string& face_feature_net, const string& face_feature_model)
+	const string& face_feature_net, const string& face_feature_model,
+	const string& pose_feat_net, const string& pose_feat_model)
 {
 	if (config_.gpu_id < 0) {
 		caffe::SetMode(caffe::CPU, -1);
@@ -127,6 +128,9 @@ SshFaceDetWorker::SshFaceDetWorker(const string& ssh_net, const string &ssh_mode
 			caffe::SetMode(caffe::GPU, config_.gpu_id);
 		}
 	}
+
+	matching.resize(70);
+
 	net_ = new caffe::Net(ssh_net);
 	net_->CopyTrainedLayersFrom(ssh_model);
 
@@ -135,11 +139,16 @@ SshFaceDetWorker::SshFaceDetWorker(const string& ssh_net, const string &ssh_mode
 
 	facefeature_net = new caffe::Net(face_feature_net);
 	facefeature_net->CopyTrainedLayersFrom(face_feature_model);
+
+	pose_net = new caffe::Net(pose_feat_net);
+	pose_net->CopyTrainedLayersFrom(pose_feat_model);
+
 }
 SshFaceDetWorker::~SshFaceDetWorker(){
 	delete net_; 
 	delete real_frontface_net;
 	delete facefeature_net;
+	delete pose_net;
 	caffe::MemPoolClear();
 }
 static float ComputeScaleFactor(int width, int height, int target_size, int max_size) {
@@ -231,10 +240,57 @@ vector<BBox>SshFaceDetWorker::detect(cv::Mat img)
 void SshFaceDetWorker::GetStandaredFeats_ssh(vector<BBox>faces, jfda::JfdaDetector &detector, Mat &image_1080){
 	Timer timer;
 	timer.Tic();
+
+	//姿态估计
+
+	/*PoseInfo pose;
+	Mat frame;
+	cv::resize(image_1080, frame, Size(0, 0), 2 / 3., 2 / 3.);
+	timer.Tic();
+	pose_detect(*pose_net, frame, pose);
+	timer.Toc();
+	cout << "pose cost " << timer.Elasped() / 1000.0 << " s" << endl;
+	for (int i = 0; i < pose.subset.size(); i++){
+		float score = float(pose.subset[i][18]) / pose.subset[i][19];
+		if (pose.subset[i][19] >= 4 && score >= 0.4){
+			if (pose.subset[i][1] != -1){
+				float wid1 = 0, wid2 = 0, wid = 0;
+				if (pose.subset[i][2] != -1 && pose.subset[i][5] != -1){
+					wid1 = abs(pose.candicate[pose.subset[i][1]][0] - pose.candicate[pose.subset[i][2]][0]);
+					wid2 = abs(pose.candicate[pose.subset[i][1]][0] - pose.candicate[pose.subset[i][5]][0]);
+					wid = MAX(wid1, wid2);
+					if (wid == 0)continue;
+				}
+				if (pose.subset[i][2] != -1 && pose.subset[i][5] == -1){
+					wid1 = abs(pose.candicate[pose.subset[i][1]][0] - pose.candicate[pose.subset[i][2]][0]);
+					wid2 = wid1;
+					wid = wid1;
+					if (wid == 0)continue;
+				}
+				if (pose.subset[i][2] == -1 && pose.subset[i][5] != -1){
+					wid1 = abs(pose.candicate[pose.subset[i][1]][0] - pose.candicate[pose.subset[i][5]][0]);
+					wid2 = wid1;
+					wid = wid1;
+					if (wid == 0)continue;
+				}
+				Rect standard_rect;
+				standard_rect.x = pose.candicate[pose.subset[i][1]][0] - wid - 5;
+				standard_rect.y = pose.candicate[pose.subset[i][1]][1] - 5;
+				standard_rect.width = wid1 + wid2 + 10;
+				standard_rect.height = wid1 + wid2;
+				if (standard_rect.height < 5)standard_rect.height = 15;
+				refine(standard_rect, frame);
+				cv::rectangle(frame, standard_rect, Scalar(0, 0, 255), 2, 8, 0);
+
+				string b = "../pose_stand/" +to_string(n)+".jpg";
+				cv::imwrite(b, frame);
+			}
+		}
+	}*/
+
 	for (int i = 0; i < faces.size(); i++){
 		//用脸确定位置
 		
-		FaceInfo face;
 		Rect bigger_face;
 		int width = faces[i].x2 - faces[i].x1;
 		int height = faces[i].y2 - faces[i].y1;
@@ -244,26 +300,33 @@ void SshFaceDetWorker::GetStandaredFeats_ssh(vector<BBox>faces, jfda::JfdaDetect
 		bigger_face.height = height * 2;
 		Rect ssh_face(faces[i].x1, faces[i].y1, width, height);
 		refine(bigger_face, image_1080);
-		//rectangle(image_1080, bigger_face, Scalar(0, 0, 255), 2);		
-		//cv::putText(image_1080, to_string(i), Point(faces[i].x1, faces[i].y1), FONT_HERSHEY_COMPLEX, 0.7, Scalar(0, 255, 0), 2);
+		rectangle(image_1080, bigger_face, Scalar(0, 0, 255), 2);		
+		cv::putText(image_1080, to_string(i), Point(faces[i].x1, faces[i].y1), FONT_HERSHEY_COMPLEX, 0.7, Scalar(0, 255, 0), 2);
 		
-		face.bbox = bigger_face;
 		//得到正脸分数
 		Mat faceimg = image_1080(bigger_face);
 		
-
 		vector<FaceInfoInternal>facem;
 		vector<FaceInfo> faces_jfda = detector.Detect(faceimg, facem);
 		if (faces_jfda.size() == 1){
+			FaceInfo faceinfo = faces_jfda[0];
+			faceinfo.sdbbox = bigger_face;
 			std::tuple<bool, float>real_front_face_or_not = real_front_face(*real_frontface_net, faceimg, faces_jfda[0].bbox);
-			face.sco[1] = get<1>(real_front_face_or_not);
+			faceinfo.sco[1] = get<1>(real_front_face_or_not);
+			Mat ssh_img = CropPatch(faceimg, faces_jfda[0].bbox);
+			Extract(*facefeature_net, faceimg, faceinfo);
+			standard_faces.push_back(faceinfo);
+			string output3 = "../standard_face/" + to_string(i);
+			if (!fs::IsExists(output3)){
+				fs::MakeDir(output3);
+			}
+			string output4 = output3 + "/" + to_string(i) + ".jpg";
+			cv::imwrite(output4, ssh_img);
 		}
-
-		/*std::tuple<bool, float>real_front_face_or_not = real_front_face(*real_frontface_net, faceimg, ssh_face);
-		face.sco[1] = get<1>(real_front_face_or_not);*/
+		
 		//提取ssh人脸特征
 		
-		refine(ssh_face, image_1080);
+		/*refine(ssh_face, image_1080);
 		Mat ssh_img = image_1080(ssh_face);
 		Extract(*facefeature_net, ssh_img, face);
 		standard_faces.push_back(face);
@@ -272,7 +335,8 @@ void SshFaceDetWorker::GetStandaredFeats_ssh(vector<BBox>faces, jfda::JfdaDetect
 			fs::MakeDir(output3);
 		}
 		string output4 = output3 + "/" + to_string(i) + ".jpg";
-		cv::imwrite(output4, ssh_img);
+		cv::imwrite(output4, ssh_img);*/
+
 	}
 	timer.Toc();
 	cout << "standard cost " << timer.Elasped() / 1000.0 << " s" << endl;
@@ -296,8 +360,12 @@ int SshFaceDetWorker::good_face_ssh(vector<BBox>faces, jfda::JfdaDetector &detec
 		Rect ssh_face(faces[i].x1, faces[i].y1, width, height);
 		refine(bigger_face, image_1080);
 		std::multimap<float, int, greater<float>>IOU_map;
+
+		//IOU做跟踪
+
 		for (int j = 0; j < standard_faces.size(); j++){
-			float cur_IOU = Compute_IOU(standard_faces[j].bbox, bigger_face);
+			float cur_IOU = Compute_IOU(standard_faces[j].sdbbox, bigger_face);
+			//cout << standard_faces[j].bbox << "     " << bigger_face << endl;
 			IOU_map.insert(make_pair(cur_IOU, j));
 		}
 		if (IOU_map.begin()->first > 0){
@@ -305,22 +373,20 @@ int SshFaceDetWorker::good_face_ssh(vector<BBox>faces, jfda::JfdaDetector &detec
 			vector<FaceInfoInternal>facem;
 			vector<FaceInfo> faces_jfda = detector.Detect(faceimg, facem);
 			if (faces_jfda.size() == 1){
-				FaceInfo faceinfo;
+				FaceInfo faceinfo = faces_jfda[0];
 				std::tuple<bool, float>real_front_face_or_not = real_front_face(*real_frontface_net, faceimg, faces_jfda[0].bbox);
 				float real_sco = get<1>(real_front_face_or_not);
-				//cout << real_sco << " ------ " << standard_faces[IOU_map.begin()->second].sco[1] << endl;
 				if (real_sco > standard_faces[IOU_map.begin()->second].sco[1]){
 					faceinfo.sco[1] = real_sco;
-					faceinfo.bbox = ssh_face;
+					faceinfo.sdbbox = bigger_face;
 
 					cout << "replace " << IOU_map.begin()->second << endl;
 
-					Rect ssh_face(faces[i].x1, faces[i].y1, width, height);
-					refine(ssh_face, image_1080);
-					Mat ssh_img = image_1080(ssh_face);
-					Extract(*facefeature_net, ssh_img, faceinfo);
+					/*Rect ssh_face(faces[i].x1, faces[i].y1, width, height);
+					refine(ssh_face, image_1080);*/
+					Mat ssh_img = CropPatch(faceimg, faces_jfda[0].bbox);
+					Extract(*facefeature_net, faceimg, faceinfo);
 					standard_faces[IOU_map.begin()->second] = faceinfo;
-
 					string output3 = "../standard_face/" + to_string(IOU_map.begin()->second);
 					string output4 = output3 + "/" + to_string(IOU_map.begin()->second) + "_" + to_string(n) + ".jpg";
 					cv::imwrite(output4, ssh_img);
@@ -330,8 +396,63 @@ int SshFaceDetWorker::good_face_ssh(vector<BBox>faces, jfda::JfdaDetector &detec
 	
 	}
 	timer.Toc();
-	cout << "good face cost " << timer.Elasped() / 1000.0 << " s" << endl;
+	cout << n<<" good face cost " << timer.Elasped() / 1000.0 << " s" << endl;
 	n++;
 	if (n > 120)return 1;
 	else return 0;
+}
+
+int SshFaceDetWorker::face_match(vector<BBox>faces, jfda::JfdaDetector &detector, Mat &image_1080){
+	int count = 0;
+	for (int i = 0; i < faces.size(); i++){
+		cout << 1 << endl;
+		Rect bigger_face;
+		int width = faces[i].x2 - faces[i].x1;
+		int height = faces[i].y2 - faces[i].y1;
+		bigger_face.x = faces[i].x1 - width / 2;
+		bigger_face.y = faces[i].y1 - height / 2;
+		bigger_face.width = width * 2;
+		bigger_face.height = height * 2;
+		Rect ssh_face(faces[i].x1, faces[i].y1, width, height);
+		refine(bigger_face, image_1080);
+		Mat faceimg = image_1080(bigger_face);
+		vector<FaceInfoInternal>facem;
+		vector<FaceInfo> faces_jfda = detector.Detect(faceimg, facem);
+		/*Mat patch = CropPatch(image_1080, ssh_face);
+		FaceInfo face;
+		face.bbox = ssh_face;
+		Extract(*facefeature_net, patch, face);*/
+		cout << 2 << endl;
+		if (faces_jfda.size() == 1){
+			FaceInfo faceinfo = faces_jfda[0];
+			//Mat ssh_img = CropPatch(faceimg, faces_jfda[0].bbox);
+			Extract(*facefeature_net, faceimg, faceinfo);
+			std::multimap<float, int, greater<float>>feat_map;
+			float distance = 0.;
+			for (int j = 0; j < standard_faces.size(); j++){
+				if (standard_faces[j].is_matched == false){
+					featureCompare(standard_faces[j].feature, faceinfo.feature, distance);
+					feat_map.insert(make_pair(distance, j));
+				}
+			}
+			auto iter = feat_map.begin();
+			auto iter1 = std::next(iter, 1);
+			//cout << "score: " << iter->first << endl;
+			if (iter->first>0.45 && (iter->first - iter1->first) > 0.05){
+				matching[iter->second].push_back(faceinfo);
+				standard_faces[iter->second].is_matched = true;
+				string output3 = "../standard_face/" + to_string(iter->second);
+				string output4 = output3 + "/" + to_string(iter->second) + "_" + to_string(n) + ".jpg";
+				Mat ssh_img = CropPatch(faceimg, faces_jfda[0].bbox);
+				imwrite(output4, ssh_img);
+			}
+		}
+		cout << 3 << endl;
+	}
+	for (auto sta : standard_faces){
+		if (sta.is_matched == true)count++;
+	}
+	cout << count << " is Matched" << endl;
+	n++;
+	return count;
 }

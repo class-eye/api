@@ -271,7 +271,8 @@ int main(){
 
 	SshFaceDetWorker ssh("../models/ssh.prototxt", "../models/ssh.caffemodel",
 		"../models/deploy_simple.prototxt", "../models/eight_net_iter_2626.caffemodel",
-		"../models/facefeature.prototxt", "../models/facefeature.caffemodel");
+		"../models/facefeature.prototxt", "../models/facefeature.caffemodel",
+		"../models/pose_deploy.prototxt", "../models/pose_iter_440000.caffemodel");
 	Config config;
 	config.gpu_id = gpu_id;
 	cout << config.max_size << " " << config.min_size << endl;
@@ -327,7 +328,10 @@ int main(){
 		//}
 
 		if (n % 25 == 0){
+			timer.Tic();
 			vector<BBox>faces = ssh.detect(frame);
+			timer.Toc();
+			cout << " detect cost " << timer.Elasped() / 1000.0 << " s" << endl;
 			if (faces.size() >= max_student_num && finish==0){
 				ssh.GetStandaredFeats_ssh(faces, detector, frame);
 				finish = 1;
@@ -335,8 +339,10 @@ int main(){
 			else if (finish == 1 && good_face_finish==0){
 				good_face_finish=ssh.good_face_ssh(faces, detector, frame);
 			}
-			
-			
+			else if (good_face_finish == 1){
+				int matched = ssh.face_match(faces, detector, frame);
+				
+			}
 		}
 
 		n++;

@@ -31,7 +31,8 @@ class SshFaceDetWorker{
 public:
 	SshFaceDetWorker(const string& ssh_net, const string &ssh_model,
 		const string& real_front_face_net, const string& real_front_face_model,
-		const string& face_feature_net, const string& face_feature_model);
+		const string& face_feature_net, const string& face_feature_model,
+		const string& pose_net, const string& pose_model);
 	~SshFaceDetWorker();
 	
 	void SetConfig(Config config);
@@ -40,12 +41,15 @@ public:
 	vector<BBox>detect(cv::Mat img);
 	void GetStandaredFeats_ssh(vector<BBox>faces, jfda::JfdaDetector &detector, Mat &frame_1080);
 	int good_face_ssh(vector<BBox>faces, jfda::JfdaDetector &detector, Mat &image_1080);
+	int face_match(vector<BBox>faces, jfda::JfdaDetector &detector, Mat &image_1080);
 private:
 	Config config_;
 	Net* net_;
 	Net *real_frontface_net;
 	Net *facefeature_net;
+	Net *pose_net;
 
 	vector<FaceInfo>standard_faces;
+	vector<vector<FaceInfo>>matching;
 	int n = 0;
 };
