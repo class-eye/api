@@ -71,7 +71,8 @@ void draw_pose(Net &net, Mat &image){
 int main(){
 	//54_chinese_1102_4_0.mp4   202帧   54个人
 	//ch01_00000000072000000.mp4  99帧  56个人
-	int max_student_num = 50;
+	int max_face_num = 0;
+	int max_pose_num = 0;
 	std::tuple<vector<vector<Student_Info>>, vector<Class_Info>>student_info;
 	int gpu_id = 1;
 
@@ -331,18 +332,22 @@ int main(){
 			timer.Tic();
 			vector<BBox>faces = ssh.detect(frame);
 			timer.Toc();
-			cout << " detect cost " << timer.Elasped() / 1000.0 << " s" << endl;
-			if (faces.size() >= max_student_num && finish==0){
-				ssh.GetStandaredFeats_ssh(faces, detector, frame);
-				finish = 1;
+			cout << n/25 << " detect cost " << timer.Elasped() / 1000.0 << " s" << endl;
+			if (finish==0){
+				ssh.GetStandaredFeats_ssh(faces, detector, frame, max_face_num,max_pose_num);
+				if (n > 120){
+					finish = 1;
+					//break;
+				}
+				else finish = 0;
 			}
-			else if (finish == 1 && good_face_finish==0){
+			/*else if (finish == 1 && good_face_finish==0){
 				good_face_finish=ssh.good_face_ssh(faces, detector, frame);
 			}
 			else if (good_face_finish == 1){
 				int matched = ssh.face_match(faces, detector, frame);
 				
-			}
+			}*/
 		}
 
 		n++;

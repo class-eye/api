@@ -236,113 +236,212 @@ vector<BBox>SshFaceDetWorker::detect(cv::Mat img)
 	return all_bbox;
 
 }
+//cv::Rect get_facebbox(const cv::Rect& standard_rect, const cv::Mat& image) {
+//	Rect face_box;
+//	if (standard_rect.y < 230) {
+//		if (standard_rect.x < 400) {
+//			face_box.x = standard_rect.x - 10;
+//		}
+//		else {
+//			face_box.x = standard_rect.x - 5;
+//		}
+//		face_box.y = standard_rect.y - 0.666 * standard_rect.height;
+//		face_box.width = standard_rect.width * 1.4;
+//		face_box.height = standard_rect.height * 1.2;
+//		if (face_box.width * face_box.height < 1600) {
+//			int center_x = face_box.x + 0.5 * face_box.width;
+//			int center_y = face_box.y + 0.5 * face_box.height;
+//			face_box.x = center_x - 18;
+//			face_box.y = center_y - 18;
+//			face_box.width = 36;
+//			face_box.height = 36;
+//		}
+//	}
+//	else {
+//		if (standard_rect.x < 400) {
+//			face_box.x = standard_rect.x - 25;
+//		}
+//		else {
+//			face_box.x = standard_rect.x - 5;
+//		}
+//		face_box.y = standard_rect.y - 0.9 * standard_rect.height;
+//		face_box.width = standard_rect.width * 1.5;
+//		face_box.height = standard_rect.height * 2;
+//		if (face_box.height < 60) {
+//			face_box.height = 60;
+//		}
+//		if (face_box.width < 65) {
+//			face_box.width = 65;
+//		}
+//	}
+//	refine(face_box, image);
+//	return face_box;
+//}
 
-void SshFaceDetWorker::GetStandaredFeats_ssh(vector<BBox>faces, jfda::JfdaDetector &detector, Mat &image_1080){
-	Timer timer;
-	timer.Tic();
-
-	//姿态估计
-
-	/*PoseInfo pose;
-	Mat frame;
-	cv::resize(image_1080, frame, Size(0, 0), 2 / 3., 2 / 3.);
-	timer.Tic();
-	pose_detect(*pose_net, frame, pose);
-	timer.Toc();
-	cout << "pose cost " << timer.Elasped() / 1000.0 << " s" << endl;
-	for (int i = 0; i < pose.subset.size(); i++){
-		float score = float(pose.subset[i][18]) / pose.subset[i][19];
-		if (pose.subset[i][19] >= 4 && score >= 0.4){
-			if (pose.subset[i][1] != -1){
-				float wid1 = 0, wid2 = 0, wid = 0;
-				if (pose.subset[i][2] != -1 && pose.subset[i][5] != -1){
-					wid1 = abs(pose.candicate[pose.subset[i][1]][0] - pose.candicate[pose.subset[i][2]][0]);
-					wid2 = abs(pose.candicate[pose.subset[i][1]][0] - pose.candicate[pose.subset[i][5]][0]);
-					wid = MAX(wid1, wid2);
-					if (wid == 0)continue;
-				}
-				if (pose.subset[i][2] != -1 && pose.subset[i][5] == -1){
-					wid1 = abs(pose.candicate[pose.subset[i][1]][0] - pose.candicate[pose.subset[i][2]][0]);
-					wid2 = wid1;
-					wid = wid1;
-					if (wid == 0)continue;
-				}
-				if (pose.subset[i][2] == -1 && pose.subset[i][5] != -1){
-					wid1 = abs(pose.candicate[pose.subset[i][1]][0] - pose.candicate[pose.subset[i][5]][0]);
-					wid2 = wid1;
-					wid = wid1;
-					if (wid == 0)continue;
-				}
-				Rect standard_rect;
-				standard_rect.x = pose.candicate[pose.subset[i][1]][0] - wid - 5;
-				standard_rect.y = pose.candicate[pose.subset[i][1]][1] - 5;
-				standard_rect.width = wid1 + wid2 + 10;
-				standard_rect.height = wid1 + wid2;
-				if (standard_rect.height < 5)standard_rect.height = 15;
-				refine(standard_rect, frame);
-				cv::rectangle(frame, standard_rect, Scalar(0, 0, 255), 2, 8, 0);
-
-				string b = "../pose_stand/" +to_string(n)+".jpg";
-				cv::imwrite(b, frame);
-			}
-		}
-	}*/
-
-	for (int i = 0; i < faces.size(); i++){
-		//用脸确定位置
-		
-		Rect bigger_face;
-		int width = faces[i].x2 - faces[i].x1;
-		int height = faces[i].y2 - faces[i].y1;
-		bigger_face.x = faces[i].x1 - width / 2;
-		bigger_face.y = faces[i].y1 - height / 2;
-		bigger_face.width = width * 2;
-		bigger_face.height = height * 2;
-		Rect ssh_face(faces[i].x1, faces[i].y1, width, height);
-		refine(bigger_face, image_1080);
-		rectangle(image_1080, bigger_face, Scalar(0, 0, 255), 2);		
-		cv::putText(image_1080, to_string(i), Point(faces[i].x1, faces[i].y1), FONT_HERSHEY_COMPLEX, 0.7, Scalar(0, 255, 0), 2);
-		
-		//得到正脸分数
-		Mat faceimg = image_1080(bigger_face);
-		
+void SshFaceDetWorker::GetStandaredFeats(jfda::JfdaDetector &detector,vector<Rect>face_or_pose_rect, Mat &image_1080){
+	standard_faces.clear();
+	for (int i = 0; i < face_or_pose_rect.size(); i++){
+		Mat faceimg = image_1080(face_or_pose_rect[i]);
+		rectangle(image_1080, face_or_pose_rect[i], Scalar(0, 0, 255), 2);
 		vector<FaceInfoInternal>facem;
 		vector<FaceInfo> faces_jfda = detector.Detect(faceimg, facem);
 		if (faces_jfda.size() == 1){
 			FaceInfo faceinfo = faces_jfda[0];
-			faceinfo.sdbbox = bigger_face;
+			faceinfo.sdbbox = face_or_pose_rect[i];
 			std::tuple<bool, float>real_front_face_or_not = real_front_face(*real_frontface_net, faceimg, faces_jfda[0].bbox);
 			faceinfo.sco[1] = get<1>(real_front_face_or_not);
 			Mat ssh_img = CropPatch(faceimg, faces_jfda[0].bbox);
 			Extract(*facefeature_net, faceimg, faceinfo);
 			standard_faces.push_back(faceinfo);
-			string output3 = "../standard_face/" + to_string(i);
+			/*string output3 = "../standard_face/" + to_string(i);
 			if (!fs::IsExists(output3)){
 				fs::MakeDir(output3);
 			}
 			string output4 = output3 + "/" + to_string(i) + ".jpg";
-			cv::imwrite(output4, ssh_img);
+			cv::imwrite(output4, ssh_img);*/
 		}
-		
-		//提取ssh人脸特征
-		
-		/*refine(ssh_face, image_1080);
-		Mat ssh_img = image_1080(ssh_face);
-		Extract(*facefeature_net, ssh_img, face);
-		standard_faces.push_back(face);
-		string output3 = "../standard_face/" + to_string(i);
-		if (!fs::IsExists(output3)){
-			fs::MakeDir(output3);
-		}
-		string output4 = output3 + "/" + to_string(i) + ".jpg";
-		cv::imwrite(output4, ssh_img);*/
-
 	}
-	timer.Toc();
-	cout << "standard cost " << timer.Elasped() / 1000.0 << " s" << endl;
-	n++;
-	string output = "../standard"+to_string(n)+".jpg";
+	cout << "GetStandaredFeats " << n << endl;
+	string output = "../standard" + to_string(n) + ".jpg";
 	imwrite(output, image_1080);
+}
+void SshFaceDetWorker::GetStandaredFeats_ssh(vector<BBox>faces, jfda::JfdaDetector &detector, Mat &image_1080, int &max_face_num, int &max_pose_num){
+	Timer timer;
+	//timer.Tic();
+	PoseInfo pose;
+	vector<Rect>pose_rect;
+	vector<Rect>face_rect;
+	if (faces.size() > max_face_num){
+
+		//姿态估计	
+		Mat frame;
+		cv::resize(image_1080, frame, Size(0, 0), 2 / 3., 2 / 3.);
+		timer.Tic();
+		pose_detect(*pose_net, frame, pose);
+		timer.Toc();
+		cout << "pose cost " << timer.Elasped() / 1000.0 << " s" << endl;
+		int pose_student_num = 0;
+		for (int i = 0; i < pose.subset.size(); i++){
+			float score = float(pose.subset[i][18]) / pose.subset[i][19];
+			if (pose.subset[i][19] >= 4 && score >= 0.4){
+				if (pose.subset[i][1] != -1){
+					pose_student_num++;
+					float wid1 = 0, wid2 = 0, wid = 0;
+					if (pose.subset[i][2] != -1 && pose.subset[i][5] != -1){
+						wid1 = abs(pose.candicate[pose.subset[i][1]][0] - pose.candicate[pose.subset[i][2]][0]);
+						wid2 = abs(pose.candicate[pose.subset[i][1]][0] - pose.candicate[pose.subset[i][5]][0]);
+						wid = MAX(wid1, wid2);
+						if (wid == 0)continue;
+					}
+					if (pose.subset[i][2] != -1 && pose.subset[i][5] == -1){
+						wid1 = abs(pose.candicate[pose.subset[i][1]][0] - pose.candicate[pose.subset[i][2]][0]);
+						wid2 = wid1;
+						wid = wid1;
+						if (wid == 0)continue;
+					}
+					if (pose.subset[i][2] == -1 && pose.subset[i][5] != -1){
+						wid1 = abs(pose.candicate[pose.subset[i][1]][0] - pose.candicate[pose.subset[i][5]][0]);
+						wid2 = wid1;
+						wid = wid1;
+						if (wid == 0)continue;
+					}
+					Rect standard_rect;
+					standard_rect.x = pose.candicate[pose.subset[i][1]][0] - wid - 5;
+					standard_rect.y = pose.candicate[pose.subset[i][1]][1] - 5;
+					standard_rect.width = wid1 + wid2 + 10;
+					standard_rect.height = wid1 + wid2;
+					if (standard_rect.height < 5)standard_rect.height = 15;
+					standard_rect.x = standard_rect.x * 3 / 2;
+					standard_rect.y = standard_rect.y * 3 / 2;
+					standard_rect.width = standard_rect.width * 3 / 2;
+					standard_rect.height = standard_rect.height * 3 / 2;
+					refine(standard_rect, image_1080);
+					pose_rect.push_back(standard_rect);
+					/*refine(standard_rect, frame);
+					cv::rectangle(frame, standard_rect, Scalar(0, 0, 255), 2, 8, 0);
+
+					string b = "../pose_stand/" + to_string(n) + ".jpg";
+					cv::imwrite(b, frame);*/
+				}
+			}
+		}
+		max_face_num = faces.size();
+		if (faces.size() < pose_student_num && max_pose_num<pose_student_num){	
+			max_pose_num = pose_student_num;
+			//用身体框
+			GetStandaredFeats(detector,pose_rect,image_1080);
+		}
+		else if (faces.size() > pose_student_num){
+			for (int i = 0; i < faces.size(); i++){
+				//用脸框
+
+				Rect bigger_face;
+				int width = faces[i].x2 - faces[i].x1;
+				int height = faces[i].y2 - faces[i].y1;
+				bigger_face.x = faces[i].x1 - width / 2;
+				bigger_face.y = faces[i].y1 - height / 2;
+				bigger_face.width = width * 2;
+				bigger_face.height = height * 2;
+				refine(bigger_face, image_1080);
+				face_rect.push_back(bigger_face);
+			}
+			GetStandaredFeats(detector,face_rect,image_1080);
+		}
+	}
+	//for (int i = 0; i < faces.size(); i++){
+	//	//用脸确定位置
+	//	
+	//	Rect bigger_face;
+	//	int width = faces[i].x2 - faces[i].x1;
+	//	int height = faces[i].y2 - faces[i].y1;
+	//	bigger_face.x = faces[i].x1 - width / 2;
+	//	bigger_face.y = faces[i].y1 - height / 2;
+	//	bigger_face.width = width * 2;
+	//	bigger_face.height = height * 2;
+	//	Rect ssh_face(faces[i].x1, faces[i].y1, width, height);
+	//	refine(bigger_face, image_1080);
+	//	rectangle(image_1080, bigger_face, Scalar(0, 0, 255), 2);		
+	//	cv::putText(image_1080, to_string(i), Point(faces[i].x1, faces[i].y1), FONT_HERSHEY_COMPLEX, 0.7, Scalar(0, 255, 0), 2);
+	//	
+	//	//得到正脸分数
+	//	Mat faceimg = image_1080(bigger_face);
+	//	
+	//	vector<FaceInfoInternal>facem;
+	//	vector<FaceInfo> faces_jfda = detector.Detect(faceimg, facem);
+	//	if (faces_jfda.size() == 1){
+	//		FaceInfo faceinfo = faces_jfda[0];
+	//		faceinfo.sdbbox = bigger_face;
+	//		std::tuple<bool, float>real_front_face_or_not = real_front_face(*real_frontface_net, faceimg, faces_jfda[0].bbox);
+	//		faceinfo.sco[1] = get<1>(real_front_face_or_not);
+	//		Mat ssh_img = CropPatch(faceimg, faces_jfda[0].bbox);
+	//		Extract(*facefeature_net, faceimg, faceinfo);
+	//		standard_faces.push_back(faceinfo);
+	//		string output3 = "../standard_face/" + to_string(i);
+	//		if (!fs::IsExists(output3)){
+	//			fs::MakeDir(output3);
+	//		}
+	//		string output4 = output3 + "/" + to_string(i) + ".jpg";
+	//		cv::imwrite(output4, ssh_img);
+	//	}
+	//	
+	//	//提取ssh人脸特征
+	//	
+	//	/*refine(ssh_face, image_1080);
+	//	Mat ssh_img = image_1080(ssh_face);
+	//	Extract(*facefeature_net, ssh_img, face);
+	//	standard_faces.push_back(face);
+	//	string output3 = "../standard_face/" + to_string(i);
+	//	if (!fs::IsExists(output3)){
+	//		fs::MakeDir(output3);
+	//	}
+	//	string output4 = output3 + "/" + to_string(i) + ".jpg";
+	//	cv::imwrite(output4, ssh_img);*/
+	//}
+	/*timer.Toc();
+	cout << "standard cost " << timer.Elasped() / 1000.0 << " s" << endl;*/
+	n++;
+	/*string output = "../standard"+to_string(n)+".jpg";
+	imwrite(output, image_1080);*/
 
 }
 

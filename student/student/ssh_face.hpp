@@ -39,7 +39,8 @@ public:
 	/*void Initialize();
 	void Deinitialize();*/
 	vector<BBox>detect(cv::Mat img);
-	void GetStandaredFeats_ssh(vector<BBox>faces, jfda::JfdaDetector &detector, Mat &frame_1080);
+	void GetStandaredFeats(jfda::JfdaDetector &detector, vector<Rect>face_or_pose_rect, Mat &image_1080);
+	void GetStandaredFeats_ssh(vector<BBox>faces, jfda::JfdaDetector &detector, Mat &frame_1080, int &max_face_num, int &max_pose_num);
 	int good_face_ssh(vector<BBox>faces, jfda::JfdaDetector &detector, Mat &image_1080);
 	int face_match(vector<BBox>faces, jfda::JfdaDetector &detector, Mat &image_1080);
 private:
